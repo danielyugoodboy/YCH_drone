@@ -241,3 +241,120 @@ $ catkin build YCH_drone --no-deps
 $ cd ~/drone_ws/
 $ catkin build YCH_drone --no-deps
 ```
+
+
+#### 1-5-A github 下載
+
+### 1-7 執行
+* 開啟一個終端 (開啟gazebo環境)
+```
+$ roslaunch YCH_drone start_offb.launch 
+```
+![](https://i.imgur.com/1pJ1erm.jpg)
+
+* 另外開啟一個終端 (確認是否有連接上mavros)
+```
+$ rostopic echo /mavros/state
+```
+![](https://i.imgur.com/rRV9C8N.png)
+
+* 另外開啟一個終端 (啟動執行檔)
+```
+$ cd ~/drone_ws/src/YCH_drone/src
+$ python test_drone.py
+```
+![](https://i.imgur.com/6Zf0mCG.jpg)
+
+
+## 2. Git 筆記
+* 1. 安裝Git
+* 2. 本地端註冊
+```
+$ git config --global user.name "YuChiaHao"
+$ git config --global user.email "danielyugoodboy@gmail.com"
+```
+
+* 3. 初始化
+```
+# 移動到要進行git管理的資料夾底下
+$ git init
+```
+
+* 4. 查看git管理狀態
+```
+$ git status
+```
+
+* 5. 將更動過得檔案加入git索引
+```
+$ git add .
+```
+
+* 6. 將加入到索引的檔案提交到本地端數據庫
+```
+$ git commit -m "2022/11/15 Initial file"
+```
+
+* 7. 下載 GitKraken
+https://www.gitkraken.com/
+
+
+
+
+
+
+
+
+
+
+
+## 3. Ros 筆記
+教學 ： http://wiki.ros.org/ROS/Tutorials
+建議閱讀章節:
+```
+1. Installing and Configuring Your ROS Environment
+2. Navigating the ROS Filesystem
+3. Creating a ROS Package
+4. Building a ROS Package
+5. Understanding ROS Nodes
+6. Understanding ROS Topics
+8. Using rqt_console and roslaunch
+11. Writing a Simple Publisher and Subscriber (C++)
+12. Writing a Simple Publisher and Subscriber (Python)
+13. Examining the Simple Publisher and Subscriber
+```
+![](https://i.imgur.com/vgXhZYf.png)
+
+
+1. rospack
+rospack allows you to get information about packages. In this tutorial, we are only going to cover the find option, which returns the path to package.
+```
+$ rospack find [package_name]
+```
+
+2. roscd
+roscd is part of the rosbash suite. It allows you to change directory (cd) directly to a package or a stack.
+```
+$ roscd <package-or-stack>[/subdir]
+```
+
+3. 建立package需要注意：
+Building a catkin workspace and sourcing the setup file
+
+4. Quick Overview of Graph Concepts
+* Nodes: A node is an executable that uses ROS to communicate with other nodes.
+
+* Messages: ROS data type used when subscribing or publishing to a topic.
+
+* Topics: Nodes can publish messages to a topic as well as subscribe to a topic to receive messages.
+
+* Master: Name service for ROS (i.e. helps nodes find each other)
+
+* rosout: ROS equivalent of stdout/stderr
+
+* roscore: Master + rosout + parameter server (parameter server will be introduced later)
+
+5. 建立python node的時候,記得要把檔案改成可執行,不然rosrun會找不到
+```
+chmod +x talker.py
+```
