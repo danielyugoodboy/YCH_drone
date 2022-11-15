@@ -113,15 +113,25 @@ $ source ~/.bashrc
 
 ### 1-5. 建立YCH_drone環境包
 
-#### 1-5-A 從頭建立
+#### 1-5-A 從github下載
+* 下載
+    ```
+    $ cd ~/drone_ws/src/
+    $ git clone https://github.com/danielyugoodboy/YCH_drone.git
+    $ cd ~/drone_ws/
+    $ catkin build YCH_drone --no-deps
+    ```
+* 接下來可以直接跳到1-6
+
+#### 1-5-B 從頭建立
 
 * 建立package
-```
-$ cd ~/drone_ws/src/
-$ catkin_create_pkg YCH_drone rospy
-$ cd ~/drone_ws/
-$ catkin build YCH_drone --no-deps
-```
+    ```
+    $ cd ~/drone_ws/src/
+    $ catkin_create_pkg YCH_drone rospy
+    $ cd ~/drone_ws/
+    $ catkin build YCH_drone --no-deps
+    ```
 
 * 建立環境執行檔
     ```
@@ -243,8 +253,6 @@ $ catkin build YCH_drone --no-deps
 ```
 
 
-#### 1-5-A github 下載
-
 ### 1-7 執行
 * 開啟一個終端 (開啟gazebo環境)
 ```
@@ -260,7 +268,7 @@ $ rostopic echo /mavros/state
 
 * 另外開啟一個終端 (啟動執行檔)
 ```
-$ cd ~/drone_ws/src/YCH_drone/src
+$ cd ~/drone_ws/src/YCH_drone/src  # 或是 $ roscd YCH_drone/src/
 $ python test_drone.py
 ```
 ![](https://i.imgur.com/6Zf0mCG.jpg)
@@ -297,14 +305,6 @@ $ git commit -m "2022/11/15 Initial file"
 
 * 7. 下載 GitKraken
 https://www.gitkraken.com/
-
-
-
-
-
-
-
-
 
 
 
