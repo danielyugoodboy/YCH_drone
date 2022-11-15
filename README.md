@@ -1,5 +1,6 @@
 # YCH_drone
 This is a side project about Px4 on Gazebo
+當前版本：1.0.0
 
 * 連結:
 
