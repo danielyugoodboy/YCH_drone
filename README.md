@@ -3,15 +3,15 @@ This is a side project about Px4 on Gazebo
 
 * 連結:
 
-    * <主要安裝參考> 无人机自动驾驶软件系列 E01：OFFBOARD控制以及Gazebo仿真
+    * < 主要安裝參考 > 無人機自動駕駛軟件系列 E01：OFFBOARD控制以及Gazebo仿真
 
         https://gaas.gitbook.io/guide/software-realization-build-your-own-autonomous-drone/wu-ren-ji-zi-dong-jia-shi-xi-lie-offboard-kong-zhi-yi-ji-gazebo-fang-zhen
 
-    * <官方安裝教學 不推薦> PX4 ROS
+    * < 官方安裝教學 > PX4 ROS
     
         https://docs.px4.io/main/zh/ros/ros1.html
 
-    * PX4 飛控介紹
+    * < PX4 飛控介紹 >
     
         https://docs.px4.io/v1.12/zh/getting_started/px4_basic_concepts.html
 
