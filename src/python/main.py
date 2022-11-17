@@ -8,6 +8,10 @@ from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
 
+'''
+參考文件：https://github.com/danielyugoodboy/NCRL-AIDrone-Platform/tree/master/src
+'''
+
 def myhook():
     print("ROS shutdown")
     print("Back to home !")
