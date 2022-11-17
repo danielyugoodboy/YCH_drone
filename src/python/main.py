@@ -10,6 +10,13 @@ from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeReq
 
 '''
 參考文件：https://github.com/danielyugoodboy/NCRL-AIDrone-Platform/tree/master/src
+飛行模式：https://docs.px4.io/main/zh/getting_started/flight_modes.html
+MAVROS Basics: http://edu.gaitech.hk/gapter/mavros-basics.html
+MAVROS_Tutorial: https://masoudir.github.io/mavros_tutorial/
+
+設計不同的飛行模式：
+
+
 '''
 
 def myhook():
@@ -52,7 +59,7 @@ def main(args):
 
     # Define inital position
     pose = PoseStamped()
-    pose.pose.position.x = 0
+    pose.pose.position.x = 2
     pose.pose.position.y = 0
     pose.pose.position.z = 2
 
@@ -68,6 +75,9 @@ def main(args):
     print("State: Set SetModeRequest")
     offb_set_mode = SetModeRequest()
     offb_set_mode.custom_mode = 'OFFBOARD'
+
+    land_set_mode = SetModeRequest()
+    land_set_mode.custom_mode = 'LAND'
 
     print("State: Set CommandBoolRequest")
     arm_cmd = CommandBoolRequest()
@@ -99,6 +109,7 @@ def main(args):
         print('KeyboardInterrupt!')
 
     finally:
+        set_mode_client.call(land_set_mode).mode_sent
         rospy.on_shutdown(myhook)
 
 if __name__ == "__main__":
