@@ -9,6 +9,8 @@ project(YCH_drone)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  roscpp
+  mavros_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -132,6 +134,10 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/YCH_drone_node.cpp)
+
+# My CPP File
+add_executable(test_drone_cpp src/cpp/test_drone_cpp.cpp)
+target_link_libraries(test_drone_cpp ${catkin_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
