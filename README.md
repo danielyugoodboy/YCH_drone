@@ -16,6 +16,11 @@ This is a side project about Px4 on Gazebo
     
         https://docs.px4.io/v1.12/zh/getting_started/px4_basic_concepts.html
 
+    * 參考文件：https://github.com/danielyugoodboy/NCRL-AIDrone-Platform/tree/master/src
+    * 飛行模式：https://docs.px4.io/main/zh/getting_started/flight_modes.html
+    * MAVROS Basics: http://edu.gaitech.hk/gapter/mavros-basics.html
+    * MAVROS_Tutorial: https://masoudir.github.io/mavros_tutorial/
+
 
 ## 0. 電腦配置
 * Ubuntu 18.04
@@ -328,59 +333,3 @@ This is a side project about Px4 on Gazebo
     ```
 
 * 7. 下載 GitKraken https://www.gitkraken.com/
-
-
-## 3. Ros 筆記
-
-教學 ： http://wiki.ros.org/ROS/Tutorials
-建議閱讀章節:
-```
-1. Installing and Configuring Your ROS Environment
-2. Navigating the ROS Filesystem
-3. Creating a ROS Package
-4. Building a ROS Package
-5. Understanding ROS Nodes
-6. Understanding ROS Topics
-8. Using rqt_console and roslaunch
-11. Writing a Simple Publisher and Subscriber (C++)
-12. Writing a Simple Publisher and Subscriber (Python)
-13. Examining the Simple Publisher and Subscriber
-```
-![](https://i.imgur.com/vgXhZYf.png)
-
-1. rospack
-
-    rospack allows you to get information about packages. In this tutorial, we are only going to cover the find option, which returns the path to package.
-    ```
-    $ rospack find [package_name]
-    ```
-
-2. roscd
-
-    roscd is part of the rosbash suite. It allows you to change directory (cd) directly to a package or a stack.
-    ```
-    $ roscd <package-or-stack>[/subdir]
-    ```
-
-3. 建立package需要注意：
-
-    Building a catkin workspace and sourcing the setup file
-
-4. Quick Overview of Graph Concepts
-
-    * Nodes: A node is an executable that uses ROS to communicate with other nodes.
-
-    * Messages: ROS data type used when subscribing or publishing to a topic.
-
-    * Topics: Nodes can publish messages to a topic as well as subscribe to a topic to receive messages.
-
-    * Master: Name service for ROS (i.e. helps nodes find each other)
-
-    * rosout: ROS equivalent of stdout/stderr
-
-    * roscore: Master + rosout + parameter server (parameter server will be introduced later)
-
-    5. 建立python node的時候,記得要把檔案改成可執行,不然rosrun會找不到
-    ```
-    chmod +x talker.py
-    ```
