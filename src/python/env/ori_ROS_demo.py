@@ -16,21 +16,28 @@ Flying Mode：https://docs.px4.io/main/zh/getting_started/flight_modes.html
 MAVROS Basics: http://edu.gaitech.hk/gapter/mavros-basics.html
 MAVROS_Tutorial: https://masoudir.github.io/mavros_tutorial/
 
+https://github.com/mavlink/mavros/issues/1158
+
 Design different flying mode：
 1.RPYT
 2.Position
 
 '''
 
+current_state = State()
+current_pos = PoseStamped()
+
 def myhook():
     print("ROS shutdown")
     print("Back to home !")
 
-current_state = State()
 def state_cb(msg):
     global current_state
     current_state = msg
 
+def pos_cb(msg):
+    global current_pos
+    current_pos = msg
 
 def main(args):
     print("State: Start Drone Command")
@@ -40,6 +47,7 @@ def main(args):
 
     # Set subscriber & publisher
     state_sub = rospy.Subscriber("mavros/state", State, callback = state_cb)
+    local_pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, callback = pos_cb)
     local_pos_pub = rospy.Publisher("mavros/setpoint_position/local", PoseStamped, queue_size=10)
 
     # Set client
@@ -105,14 +113,19 @@ def main(args):
 
                     last_req = rospy.Time.now()
 
+            # Get current_state
+            #print(current_pos.pose.position)
+            #print(current_pos.pose.orientation)
+
             # Publish pose
             local_pos_pub.publish(pose)
             pose.pose.position.x += 0.005
+            pose.pose.orientation.z += 0.005
 
+            # calculate FPS
             current_time = time.time()
             print("Control Conmand FPS : " + "{:.1f}".format(1/(current_time-init_time)), end='\r')
             init_time = current_time
-
             rate.sleep()
 
     except KeyboardInterrupt:
