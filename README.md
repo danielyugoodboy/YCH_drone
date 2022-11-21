@@ -287,7 +287,7 @@ This is a side project about Px4 on Gazebo
     ```
     ![](https://i.imgur.com/1pJ1erm.jpg)
 
-* 另外開啟一個終端 (確認是否有連接上mavros)
+* 另外開啟一個終端 (確認是否有連接上mavros, 非必要緊用來檢查狀態)
     ```
     $ rostopic echo /mavros/state
     ```
@@ -295,8 +295,8 @@ This is a side project about Px4 on Gazebo
 
 * 另外開啟一個終端 (啟動執行檔)
     ```
-    $ cd ~/drone_ws/src/YCH_drone/src  # 或是 $ roscd YCH_drone/src/
-    $ python test_drone.py
+    $ cd ~/drone_ws/src/YCH_drone/src/python  # 或是 $ roscd YCH_drone/src/python
+    $ python pj02_gym_control.py
     ```
     ![](https://i.imgur.com/6Zf0mCG.jpg)
 

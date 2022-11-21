@@ -41,7 +41,7 @@ def pos_cb(msg):
 
 def main(args):
     print("State: Start Drone Command")
-    rospy.init_node("offb_node_py")
+    rospy.init_node("ori_ROS_demo")
 
     # ************************* PX4 SETTING ************************* #
 
