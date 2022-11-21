@@ -129,9 +129,9 @@ class Drone_Enviroment():
         init_time = time.time()
         self.last_req = rospy.Time.now()
         while(not rospy.is_shutdown()):
-            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.05
-            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.05
-            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.05
+            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.075
+            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.075
+            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.075
 
             if C_1 and C_2 and C_3:  # 1cm
                 print("Initialize Done")
@@ -177,14 +177,14 @@ class Drone_Enviroment():
         q = cos(theta/2)+sin(theta/2)i+sin(theta/2)j+sin(theta/2)k
         q = w + xi + yj + zk
         
-        第一二象限： z:- w:-
-        第三四象限： z:+ w:-
+        第一二象限： z:- w:- or z:+ w:+
+        第三四象限： z:+ w:- or z:- w:+
         '''
         X = pose.pose.position.x
         Y = pose.pose.position.y
         Z = pose.pose.position.z
         # 第一二象限
-        if pose.pose.orientation.z<0:
+        if (pose.pose.orientation.z*pose.pose.orientation.w)>0:
             yaw = math.acos(abs(pose.pose.orientation.w))*2
 
         # 第三四象限
