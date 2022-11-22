@@ -25,7 +25,7 @@ Design different flying mode：
 
 class Drone_Enviroment():
     def __init__(self):
-        print("State: Start Drone Enviroment")
+        print("[State] : Start Drone Enviroment")
         rospy.init_node("main_enviroemnt")
 
         # *********************** INITIAL PARAMETER ********************* #
@@ -45,11 +45,11 @@ class Drone_Enviroment():
         self.local_pos_pub = rospy.Publisher("mavros/setpoint_position/local", PoseStamped, queue_size=10)
 
         # Set client
-        print("State: Wait for Arming service")
+        print("[State] : Wait for Arming service")
         rospy.wait_for_service("/mavros/cmd/arming")  # wait service
         self.arming_client = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
 
-        print("State: Wait for Set_mode service")
+        print("[State] : Wait for Set_mode service")
         rospy.wait_for_service("/mavros/set_mode")  # wait service
         self.set_mode_client = rospy.ServiceProxy("mavros/set_mode", SetMode)
 
@@ -57,15 +57,15 @@ class Drone_Enviroment():
         self.rate = rospy.Rate(CONMAND_FPS)
 
         # Wait for Flight Controller connection
-        print("State: Wait for Connection")
+        print("[State] : Wait for Connection")
         while(not rospy.is_shutdown() and not self.current_state.connected):
             self.rate.sleep()
 
-        print("State: Set SetModeRequest")
+        print("[State] : Set SetModeRequest")
         self.offb_set_mode = SetModeRequest()
         self.offb_set_mode.custom_mode = 'OFFBOARD'
 
-        print("State: Set CommandBoolRequest")
+        print("[State] : Set CommandBoolRequest")
         self.arm_cmd = CommandBoolRequest()
         self.arm_cmd.value = True
 
@@ -120,32 +120,32 @@ class Drone_Enviroment():
             if(rospy.is_shutdown()):
                 break
             else:
-                print("Wait for reset setpoint : " + "{}".format(i+1) + " % ", end='\r')
+                print("Wait for reset setpoint : {}".format(i+1) + " % ", end='\r')
                 self.local_pos_pub.publish(self._np2PoseStamped(init_action))
                 self.rate.sleep()
         
         # Wait the Drone to the initial point
-        print("State: Reset & Wait the Drone to the initial point")
+        print("[State] : Reset & Wait the Drone to the initial point")
         init_time = time.time()
         self.last_req = rospy.Time.now()
         while(not rospy.is_shutdown()):
-            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.05
-            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.05
-            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.05
+            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.1
+            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.1
+            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.1
 
             if C_1 and C_2 and C_3:  # 1cm
-                print("Initialize Done")
+                print("[State] : Initialize Done")
                 break
             else:
                 self.step(init_action)
         
             # calculate FPS
             current_time = time.time()
-            print("Control Conmand FPS : " + "{:.1f}".format(1/(current_time-init_time)), end='\r')
+            print("Waiting Reset... / FPS : " + "{:.1f}".format(1/(current_time-init_time)), end='\r')
             init_time = current_time
         
         self.done = False
-        print("State: Reset Done")
+        print("[State] : Reset Done")
 
         return self._PoseStamped2np(self.current_pos)
 
@@ -177,14 +177,14 @@ class Drone_Enviroment():
         q = cos(theta/2)+sin(theta/2)i+sin(theta/2)j+sin(theta/2)k
         q = w + xi + yj + zk
         
-        第一二象限： z:- w:-
-        第三四象限： z:+ w:-
+        第一二象限： z:- w:- or z:+ w:+
+        第三四象限： z:+ w:- or z:- w:+
         '''
         X = pose.pose.position.x
         Y = pose.pose.position.y
         Z = pose.pose.position.z
         # 第一二象限
-        if pose.pose.orientation.z<0:
+        if (pose.pose.orientation.z*pose.pose.orientation.w)>0:
             yaw = math.acos(abs(pose.pose.orientation.w))*2
 
         # 第三四象限
@@ -194,4 +194,4 @@ class Drone_Enviroment():
         return np.array([[X,Y,Z],[0,0,yaw]])
 
     def _myhook(self):
-        print("State: ROS shutdown, Drone Back to home !")
+        print("[State] : ROS shutdown, Drone Back to home !")

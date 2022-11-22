@@ -9,8 +9,8 @@ class myAgent():
 
     def select_action(self,obs):
         x_dir = obs[0][0]+1
-        y_dir = obs[0][1]
-        z_dir = obs[0][2]
+        y_dir = 0
+        z_dir = 2
         pitch = 0
         row = 0
         yaw = 0
