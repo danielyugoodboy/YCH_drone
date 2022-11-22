@@ -1,19 +1,17 @@
 import threading
 import tkinter
-from pynput import keyboard
-import argparse
 import copy
 import time
 import math
 import numpy as np
 from PIL import Image, ImageTk
-from pynput import keyboard
 from env.main_enviroment import Drone_Enviroment as ENV
 
 Done = False
 obsevation = None
 action = None
 press_time = time.time()
+command = False
 
 class TK_KeyBoardThread(threading.Thread):
     def __init__(self):
@@ -31,6 +29,7 @@ class TK_KeyBoardThread(threading.Thread):
             yaw = obsevation[1][2]
             l_yaw = obsevation[1][2]+math.pi/2
             r_yaw = obsevation[1][2]-math.pi/2
+
             if event.char == 'w':
                 action[0][0] = obsevation[0][0]+1*math.cos(yaw)
                 action[0][1] = obsevation[0][1]+1*math.sin(yaw)
@@ -73,13 +72,9 @@ class TK_KeyBoardThread(threading.Thread):
         Done = True
 
 
-
-def main(args):
+def main():
     global Done
-    global obsevation
-    global action
-    global command
-    global press_time
+    global obsevation, action, press_time, command
 
     KB_T = TK_KeyBoardThread()
     KB_T.start()
@@ -88,14 +83,15 @@ def main(args):
     obsevation = env.reset()
     action = obsevation.copy()
     KB_T.start_control = True
-    command = False
 
+    # Control Loop
     while True:
-        
+        # make drone stable
         if (time.time()-press_time)>0.1 and command:
             action = obsevation.copy()
             command = False
         
+        print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
         next_obsevation, reward, done, info = env.step(action)
         obsevation = next_obsevation
         if Done:
@@ -106,10 +102,5 @@ def main(args):
     env.reset()
     env.shotdown()
 
-    
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--test", default=1.0, type=float, help="Just For Test")
-    args = parser.parse_args()
-    main(args)
+    main()
