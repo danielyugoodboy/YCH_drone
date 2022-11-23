@@ -69,6 +69,13 @@ This is a side project about Px4 on Gazebo
     $ pip3 install empy
     ```
 
+* 安裝 ros_numpy
+    ```
+    $ cd
+    $ git clone https://github.com/eric-wieser/ros_numpy.git
+    $ cd ros_numpy/
+    $ python3 setup.py install
+    ```
 
 * 安裝 catkin-tools & rosinstall
     ```

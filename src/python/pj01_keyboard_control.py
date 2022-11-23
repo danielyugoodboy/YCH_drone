@@ -3,6 +3,7 @@ import tkinter
 import copy
 import time
 import math
+import cv2
 import numpy as np
 from PIL import Image, ImageTk
 from env.main_enviroment import Drone_Enviroment as ENV
@@ -92,6 +93,10 @@ def main():
             action = obsevation.copy()
             command = False
         
+        cur_img = env.current_img
+        cv2.imshow("Image window", cur_img)
+        cv2.waitKey(3)
+
         # print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
         next_obsevation, reward, done, info = env.step(action)
         obsevation = next_obsevation
@@ -99,6 +104,7 @@ def main():
             break
 
     # wait for KeyBoardThread done 
+    cv2.destroyAllWindows()
     KB_T.join()
     env.reset()
     env.shotdown()
