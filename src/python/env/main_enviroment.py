@@ -26,6 +26,21 @@ Design different flying mode：
 
 '''
 
+class Drone_observation():
+    def __init__(self):
+        '''
+        pose :
+        numpy array
+        shape = (2, 3)
+        np.array([x,y,z],[pitch, roll, yaw])
+
+        img :
+        numpy array
+        shape = (240, 320, 3)
+        '''
+        self.pose = None
+        self.img = None
+
 class Drone_Enviroment():
     def __init__(self):
         print("[State] : Start Drone Enviroment")
@@ -38,6 +53,7 @@ class Drone_Enviroment():
         self.current_pos = PoseStamped()
         self.current_img = Image()
         self.done = False
+        self.observation = Drone_observation()
 
         # ************************* PX4 SETTING ************************* #
 
@@ -103,14 +119,15 @@ class Drone_Enviroment():
         # Publish action
         self.local_pos_pub.publish(self._np2PoseStamped(action))
 
-        # Get current_state
-        current_action = self._PoseStamped2np(self.current_pos)
+        # Get observation
+        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.img = self.current_img
 
         # Calculate reward (for reinforcement learning)
         reward = 0
 
         # Done or not
-        linear_distant = np.sum(np.square(current_action[0]))**0.5
+        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
         if linear_distant >= 10:
             self.done = True
         
@@ -118,7 +135,7 @@ class Drone_Enviroment():
         info = "Nothing"
 
         self.rate.sleep()
-        return current_action, reward, self.done, info
+        return self.observation, reward, self.done, info
 
     def reset(self):
         # ************************ FLY TO INITIAL *********************** #
@@ -156,7 +173,10 @@ class Drone_Enviroment():
         self.done = False
         print("[State] : Reset Done")
 
-        return self._PoseStamped2np(self.current_pos)
+        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.img = self.current_img
+
+        return self.observation
 
     def shotdown(self):
         rospy.on_shutdown(self._myhook)
