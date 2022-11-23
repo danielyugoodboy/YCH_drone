@@ -76,11 +76,12 @@ def main():
     global Done
     global obsevation, action, press_time, command
 
+    env = ENV()
+    obsevation = env.reset()
+
     KB_T = TK_KeyBoardThread()
     KB_T.start()
 
-    env = ENV()
-    obsevation = env.reset()
     action = obsevation.copy()
     KB_T.start_control = True
 
@@ -91,7 +92,7 @@ def main():
             action = obsevation.copy()
             command = False
         
-        print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
+        # print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
         next_obsevation, reward, done, info = env.step(action)
         obsevation = next_obsevation
         if Done:
