@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Include the MAVROS node with SITL and Gazebo -->
+    <include file="$(find px4)/launch/mavros_posix_sitl.launch">
+        <!-- Word name: Firmware/Tools/sitl_gazebo/worlds/-->
+        <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/empty.world"/>
+        <!-- Word name: Firmware/Tools/sitl_gazebo/models/-->
+        <arg name="vehicle" default="iris"/>
+    </include>
+
+</launch>
