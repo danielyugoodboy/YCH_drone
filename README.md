@@ -281,24 +281,65 @@ This is a side project about Px4 on Gazebo
 
 ### 1-7 執行
 
-* 開啟一個終端 (開啟gazebo環境)
+* 修改無人機中的相機角度與位置
+    設定檔案在： drone_ws/src/Firmware/Tools/sitl_gazebo/models/iris_fpv_cam/iris_fpv_cam.sdf
+
+    修改如下：
     ```
-    $ roslaunch YCH_drone start_offb.launch 
+    <?xml version='1.0'?>
+    <sdf version='1.5'>
+    <model name='iris_fpv_cam'>
+
+        <include>
+        <uri>model://iris</uri>
+        </include>
+
+        <include>
+        <uri>model://fpv_cam</uri>
+        <pose>0 0 0 0 0.2 0</pose>
+        </include>
+        <joint name="fpv_cam_joint" type="fixed">
+        <child>fpv_cam::link</child>
+        <parent>iris::base_link</parent>
+        <axis>
+            <xyz>0 0 1</xyz>
+            <limit>
+            <upper>0</upper>
+            <lower>0</lower>
+            </limit>
+        </axis>
+        </joint>
+
+    </model>
+    </sdf>
+    ```
+
+* 開啟一個終端 - 開啟gazebo環境
+    ```
+    $ roslaunch YCH_drone start_Enviroment_1_single_drone.launch
     ```
     ![](https://i.imgur.com/1pJ1erm.jpg)
 
-* 另外開啟一個終端 (確認是否有連接上mavros, 非必要緊用來檢查狀態)
+* 另外開啟一個終端 (啟動執行檔)
+    A. KryBoard control
+    ```
+    $ cd ~/drone_ws/src/YCH_drone/src/python
+    $ python pj01_keyboard_control.py
+    ```
+    ![](https://i.imgur.com/t0bUpsa.png)
+
+    B. Gym Envirom
+    ```
+    $ cd ~/drone_ws/src/YCH_drone/src/python
+    $ python pj02_gym_control.py
+    ```
+    ![](https://i.imgur.com/6Zf0mCG.jpg)
+
+* 另外開啟一個終端 - 確認是否有連接上mavros, 非必要僅用來檢查狀態
     ```
     $ rostopic echo /mavros/state
     ```
     ![](https://i.imgur.com/rRV9C8N.png)
-
-* 另外開啟一個終端 (啟動執行檔)
-    ```
-    $ cd ~/drone_ws/src/YCH_drone/src/python  # 或是 $ roscd YCH_drone/src/python
-    $ python pj02_gym_control.py
-    ```
-    ![](https://i.imgur.com/6Zf0mCG.jpg)
 
 
 ## 2. Git 筆記
