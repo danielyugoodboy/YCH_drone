@@ -30,7 +30,7 @@ class TK_KeyBoardThread(threading.Thread):
             yaw = observation.pose[1][2]
             l_yaw = observation.pose[1][2]+math.pi/2
             r_yaw = observation.pose[1][2]-math.pi/2
-            rate = 1.5
+            rate = 3
 
             if event.char == 'w':
                 action[0][0] = observation.pose[0][0] + rate*math.cos(yaw)
@@ -47,13 +47,13 @@ class TK_KeyBoardThread(threading.Thread):
             
             # up / down / counterClockwise /Clockwise
             elif event.char == 'i':
-                action[0][2] = observation.pose[0][2]+0.5
+                action[0][2] = observation.pose[0][2]+rate*0.5
             elif event.char == 'k':
-                action[0][2] = observation.pose[0][2]-0.5
+                action[0][2] = observation.pose[0][2]-rate*0.5
             elif event.char == 'j':
-                action[1][2] = observation.pose[1][2]+rate*0.5
+                action[1][2] = observation.pose[1][2]+1
             elif event.char == 'l':
-                action[1][2] = observation.pose[1][2]-rate*0.5
+                action[1][2] = observation.pose[1][2]-1
             
             press_time = time.time()
             command = True
@@ -85,20 +85,23 @@ def main():
     KB_T.start()
 
     action = observation.pose.copy()
+    action[1] = np.array([0,0,0])
     KB_T.start_control = True
 
     # Control Loop
     while True:
         # make drone stable
+        
         if (time.time()-press_time)>0.1 and command:
             action = observation.pose.copy()
             command = False
         
+
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
 
-        # print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
+        print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
         next_observation, reward, done, info = env.step(action)
         observation = next_observation
         if Done:
