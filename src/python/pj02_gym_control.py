@@ -8,7 +8,7 @@ class myAgent():
         pass
 
     def select_action(self,obs):
-        x_dir = obs[0][0]+1
+        x_dir = obs.pose[0][0]+1
         y_dir = 0
         z_dir = 2
         pitch = 0
@@ -19,18 +19,32 @@ class myAgent():
         return action
 
 # ************************* Design Agent Stop  ************************* #
+'''
+1. action :
+numpy array
+shape = (2, 3)
+np.array([x,y,z],[pitch, roll, yaw])
 
+2. observation.pose :
+numpy array
+shape = (2, 3)
+np.array([x,y,z],[pitch, roll, yaw])
+
+3. observation.img :
+numpy array
+shape = (240, 320, 3)
+'''
 def main(args):
     env = ENV()
     agent = myAgent()
     
     for ep in range(2):
-        obsevation = env.reset()
+        observation = env.reset()
         print("Start Episode : {}".format(ep+1))
         while True:
-            action = agent.select_action(obsevation)
-            next_obsevation, reward, done, info = env.step(action)
-            obsevation = next_obsevation
+            action = agent.select_action(observation)
+            next_observation, reward, done, info = env.step(action)
+            observation = next_observation
             if done:
                 break
     

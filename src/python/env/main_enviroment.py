@@ -4,7 +4,10 @@ import rospy
 import argparse
 import time
 import math
+import cv2
 import numpy as np
+import ros_numpy
+from sensor_msgs.msg import Imu, Image
 from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
@@ -23,6 +26,21 @@ Design different flying mode：
 
 '''
 
+class Drone_observation():
+    def __init__(self):
+        '''
+        pose :
+        numpy array
+        shape = (2, 3)
+        np.array([x,y,z],[pitch, roll, yaw])
+
+        img :
+        numpy array
+        shape = (240, 320, 3)
+        '''
+        self.pose = None
+        self.img = None
+
 class Drone_Enviroment():
     def __init__(self):
         print("[State] : Start Drone Enviroment")
@@ -33,13 +51,16 @@ class Drone_Enviroment():
         self.last_req = rospy.Time.now()
         self.current_state = State()
         self.current_pos = PoseStamped()
+        self.current_img = Image()
         self.done = False
+        self.observation = Drone_observation()
 
         # ************************* PX4 SETTING ************************* #
 
         # Set subscriber
         state_sub = rospy.Subscriber("mavros/state", State, callback = self.state_cb)
         local_pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, callback = self.pos_cb)
+        local_pos_sub = rospy.Subscriber('/iris/usb_cam/image_raw', Image, callback = self.img_cb)
 
         # Set publisher
         self.local_pos_pub = rospy.Publisher("mavros/setpoint_position/local", PoseStamped, queue_size=10)
@@ -69,11 +90,15 @@ class Drone_Enviroment():
         self.arm_cmd = CommandBoolRequest()
         self.arm_cmd.value = True
 
-    def state_cb(self, msg):
-        self.current_state = msg
+    def state_cb(self, data):
+        self.current_state = data
 
-    def pos_cb(self, msg):
-        self.current_pos = msg     
+    def pos_cb(self, data):
+        self.current_pos = data
+
+    def img_cb(self, data):
+        image = ros_numpy.numpify(data).copy()
+        self.current_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     def step(self, action):
         # Confirm current_state.mode == "OFFBOARD"，give 5 sec to wait
@@ -94,14 +119,15 @@ class Drone_Enviroment():
         # Publish action
         self.local_pos_pub.publish(self._np2PoseStamped(action))
 
-        # Get current_state
-        current_action = self._PoseStamped2np(self.current_pos)
+        # Get observation
+        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.img = self.current_img
 
         # Calculate reward (for reinforcement learning)
         reward = 0
 
         # Done or not
-        linear_distant = np.sum(np.square(current_action[0]))**0.5
+        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
         if linear_distant >= 10:
             self.done = True
         
@@ -109,7 +135,7 @@ class Drone_Enviroment():
         info = "Nothing"
 
         self.rate.sleep()
-        return current_action, reward, self.done, info
+        return self.observation, reward, self.done, info
 
     def reset(self):
         # ************************ FLY TO INITIAL *********************** #
@@ -147,7 +173,10 @@ class Drone_Enviroment():
         self.done = False
         print("[State] : Reset Done")
 
-        return self._PoseStamped2np(self.current_pos)
+        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.img = self.current_img
+
+        return self.observation
 
     def shotdown(self):
         rospy.on_shutdown(self._myhook)

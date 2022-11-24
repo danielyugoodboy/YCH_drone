@@ -64,11 +64,11 @@ This is a side project about Px4 on Gazebo
         toml \
         pyquaternion
     ```
+
     ```
     $ pip install empy
     $ pip3 install empy
     ```
-
 
 * 安裝 catkin-tools & rosinstall
     ```
@@ -140,165 +140,94 @@ This is a side project about Px4 on Gazebo
 
 ### 1-5. 建立YCH_drone環境包
 
-#### 1-5-A 從github下載
+#### 從github下載
 
-* 下載
+* 下載 (下載下來的預設 branch 是 master 請更改 branch)
     ```
     $ cd ~/drone_ws/src/
     $ git clone https://github.com/danielyugoodboy/YCH_drone.git
     $ cd ~/drone_ws/
     $ catkin build YCH_drone --no-deps
     ```
-* 接下來可以直接跳到1-6
 
-#### 1-5-B 從頭建立
 
-* 建立package
+### 1-6 執行
+* 有一些額外的東西需要安裝
+
     ```
-    $ cd ~/drone_ws/src/
-    $ catkin_create_pkg YCH_drone rospy
-    $ cd ~/drone_ws/
-    $ catkin build YCH_drone --no-deps
+    # 1. Install openCV
+    $ pip install opencv-python
+
+    # 2. Install ros_numpy
+    $ cd
+    $ git clone https://github.com/eric-wieser/ros_numpy.git
+    $ cd ros_numpy/
+    $ python3 setup.py install
     ```
 
-* 建立環境執行檔
-    ```
-    $ cd ~/drone_ws/src/YCH_drone/
-    $ mkdir launch
-    $ cd launch/
-    ```
-    在 launch 資料夾中建立一個名為 ```start_offb.launch``` 的檔案
-    並且將以下內容貼到此檔案中
+* 修改無人機中的相機角度與位置(自行選擇要不要修改)
 
-    ```launch
-    <?xml version="1.0"?>
-    <launch>
-        <!-- Include the MAVROS node with SITL and Gazebo -->
-        <include file="$(find px4)/launch/mavros_posix_sitl.launch">
+    設定檔案在： drone_ws/src/Firmware/Tools/sitl_gazebo/models/iris_fpv_cam/iris_fpv_cam.sdf
+
+    修改如下：
+    ```
+    <?xml version='1.0'?>
+    <sdf version='1.5'>
+    <model name='iris_fpv_cam'>
+
+        <include>
+        <uri>model://iris</uri>
         </include>
 
-    </launch>
-    ```
-
-    如果想嘗試不同地圖的話，可以改成下面這種
-    ```launch
-    <?xml version="1.0"?>
-    <launch>
-        <!-- Include the MAVROS node with SITL and Gazebo -->
-        <include file="$(find px4)/launch/mavros_posix_sitl.launch">
-            <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/warehouse.world"/>
+        <include>
+        <uri>model://fpv_cam</uri>
+        <pose>0 0 0 0 0.2 0</pose>
         </include>
+        <joint name="fpv_cam_joint" type="fixed">
+        <child>fpv_cam::link</child>
+        <parent>iris::base_link</parent>
+        <axis>
+            <xyz>0 0 1</xyz>
+            <limit>
+            <upper>0</upper>
+            <lower>0</lower>
+            </limit>
+        </axis>
+        </joint>
 
-    </launch>
+    </model>
+    </sdf>
     ```
 
-* 建立操控執行檔
+* 開啟一個終端 - 開啟gazebo環境
+
     ```
-    $ cd ~/drone_ws/src/YCH_drone/src
-    ```
-* 在 src/ 資料夾中建立一個名為 ```test_drone.py``` 的檔案並且將以下內容貼到此檔案中
-    ```python
-    #! /usr/bin/env python
-
-    import rospy
-    from geometry_msgs.msg import PoseStamped
-    from mavros_msgs.msg import State
-    from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
-
-    current_state = State()
-
-    def state_cb(msg):
-        global current_state
-        current_state = msg
-
-
-    if __name__ == "__main__":
-        rospy.init_node("offb_node_py")
-
-        state_sub = rospy.Subscriber("mavros/state", State, callback = state_cb)
-
-        local_pos_pub = rospy.Publisher("mavros/setpoint_position/local", PoseStamped, queue_size=10)
-
-        rospy.wait_for_service("/mavros/cmd/arming")
-        arming_client = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)    
-
-        rospy.wait_for_service("/mavros/set_mode")
-        set_mode_client = rospy.ServiceProxy("mavros/set_mode", SetMode)
-
-
-        # Setpoint publishing MUST be faster than 2Hz
-        rate = rospy.Rate(20)
-
-        # Wait for Flight Controller connection
-        while(not rospy.is_shutdown() and not current_state.connected):
-            rate.sleep()
-
-        pose = PoseStamped()
-
-        pose.pose.position.x = 0
-        pose.pose.position.y = 0
-        pose.pose.position.z = 2
-
-        # Send a few setpoints before starting
-        for i in range(100):   
-            if(rospy.is_shutdown()):
-                break
-
-            local_pos_pub.publish(pose)
-            rate.sleep()
-
-        offb_set_mode = SetModeRequest()
-        offb_set_mode.custom_mode = 'OFFBOARD'
-
-        arm_cmd = CommandBoolRequest()
-        arm_cmd.value = True
-
-        last_req = rospy.Time.now()
-
-        while(not rospy.is_shutdown()):
-            if(current_state.mode != "OFFBOARD" and (rospy.Time.now() - last_req) > rospy.Duration(5.0)):
-                if(set_mode_client.call(offb_set_mode).mode_sent == True):
-                    rospy.loginfo("OFFBOARD enabled")
-
-                last_req = rospy.Time.now()
-            else:
-                if(not current_state.armed and (rospy.Time.now() - last_req) > rospy.Duration(5.0)):
-                    if(arming_client.call(arm_cmd).success == True):
-                        rospy.loginfo("Vehicle armed")
-
-                    last_req = rospy.Time.now()
-
-            local_pos_pub.publish(pose)
-
-            rate.sleep()
-    ```
-
-* build YCH_drone
-    ```
-    $ cd ~/drone_ws/
-    $ catkin build YCH_drone --no-deps
-    ```
-
-### 1-7 執行
-
-* 開啟一個終端 (開啟gazebo環境)
-    ```
-    $ roslaunch YCH_drone start_offb.launch 
+    $ roslaunch YCH_drone start_Enviroment_1_single_drone.launch
     ```
     ![](https://i.imgur.com/1pJ1erm.jpg)
 
-* 另外開啟一個終端 (確認是否有連接上mavros, 非必要緊用來檢查狀態)
+* 另外開啟一個終端 (啟動執行檔)
+
+    A. KryBoard control
+    ```
+    $ cd ~/drone_ws/src/YCH_drone/src/python
+    $ python pj01_keyboard_control.py
+    ```
+    ![](https://i.imgur.com/t0bUpsa.png)
+
+    B. Gym Envirom
+    ```
+    $ cd ~/drone_ws/src/YCH_drone/src/python
+    $ python pj02_gym_control.py
+    ```
+    ![](https://i.imgur.com/6Zf0mCG.jpg)
+
+* 另外開啟一個終端 - 確認是否有連接上mavros, 非必要僅用來檢查狀態
+
     ```
     $ rostopic echo /mavros/state
     ```
     ![](https://i.imgur.com/rRV9C8N.png)
-
-* 另外開啟一個終端 (啟動執行檔)
-    ```
-    $ cd ~/drone_ws/src/YCH_drone/src/python  # 或是 $ roscd YCH_drone/src/python
-    $ python pj02_gym_control.py
-    ```
-    ![](https://i.imgur.com/6Zf0mCG.jpg)
 
 
 ## 2. Git 筆記

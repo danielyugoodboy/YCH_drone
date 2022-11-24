@@ -3,12 +3,13 @@ import tkinter
 import copy
 import time
 import math
+import cv2
 import numpy as np
 from PIL import Image, ImageTk
 from env.main_enviroment import Drone_Enviroment as ENV
 
 Done = False
-obsevation = None
+observation = None
 action = None
 press_time = time.time()
 command = False
@@ -24,34 +25,35 @@ class TK_KeyBoardThread(threading.Thread):
     
     def xFunc_press(self, event):
         # forward / go_back / left / right
-        global obsevation, action, press_time, command
-        if obsevation is not None and action is not None and self.start_control:
-            yaw = obsevation[1][2]
-            l_yaw = obsevation[1][2]+math.pi/2
-            r_yaw = obsevation[1][2]-math.pi/2
+        global observation, action, press_time, command
+        if observation is not None and action is not None and self.start_control:
+            yaw = observation.pose[1][2]
+            l_yaw = observation.pose[1][2]+math.pi/2
+            r_yaw = observation.pose[1][2]-math.pi/2
+            rate = 1.5
 
             if event.char == 'w':
-                action[0][0] = obsevation[0][0]+1*math.cos(yaw)
-                action[0][1] = obsevation[0][1]+1*math.sin(yaw)
+                action[0][0] = observation.pose[0][0] + rate*math.cos(yaw)
+                action[0][1] = observation.pose[0][1] + rate*math.sin(yaw)
             elif event.char == 's':
-                action[0][0] = obsevation[0][0]-1*math.cos(yaw)
-                action[0][1] = obsevation[0][1]-1*math.sin(yaw)
+                action[0][0] = observation.pose[0][0]-rate*math.cos(yaw)
+                action[0][1] = observation.pose[0][1]-rate*math.sin(yaw)
             elif event.char == 'a':
-                action[0][0] = obsevation[0][0]-1*math.cos(r_yaw)
-                action[0][1] = obsevation[0][1]-1*math.sin(r_yaw)
+                action[0][0] = observation.pose[0][0]-rate*math.cos(r_yaw)
+                action[0][1] = observation.pose[0][1]-rate*math.sin(r_yaw)
             elif event.char == 'd':
-                action[0][0] = obsevation[0][0]-1*math.cos(l_yaw)
-                action[0][1] = obsevation[0][1]-1*math.sin(l_yaw)
+                action[0][0] = observation.pose[0][0]-rate*math.cos(l_yaw)
+                action[0][1] = observation.pose[0][1]-rate*math.sin(l_yaw)
             
             # up / down / counterClockwise /Clockwise
             elif event.char == 'i':
-                action[0][2] = obsevation[0][2]+0.5
+                action[0][2] = observation.pose[0][2]+0.5
             elif event.char == 'k':
-                action[0][2] = obsevation[0][2]-0.5
+                action[0][2] = observation.pose[0][2]-0.5
             elif event.char == 'j':
-                action[1][2] = obsevation[1][2]+0.5
+                action[1][2] = observation.pose[1][2]+rate*0.5
             elif event.char == 'l':
-                action[1][2] = obsevation[1][2]-0.5
+                action[1][2] = observation.pose[1][2]-rate*0.5
             
             press_time = time.time()
             command = True
@@ -74,31 +76,36 @@ class TK_KeyBoardThread(threading.Thread):
 
 def main():
     global Done
-    global obsevation, action, press_time, command
+    global observation, action, press_time, command
 
     env = ENV()
-    obsevation = env.reset()
+    observation = env.reset()
 
     KB_T = TK_KeyBoardThread()
     KB_T.start()
 
-    action = obsevation.copy()
+    action = observation.pose.copy()
     KB_T.start_control = True
 
     # Control Loop
     while True:
         # make drone stable
         if (time.time()-press_time)>0.1 and command:
-            action = obsevation.copy()
+            action = observation.pose.copy()
             command = False
         
+        cur_img = observation.img
+        cv2.imshow("Image window", cur_img)
+        cv2.waitKey(3)
+
         # print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
-        next_obsevation, reward, done, info = env.step(action)
-        obsevation = next_obsevation
+        next_observation, reward, done, info = env.step(action)
+        observation = next_observation
         if Done:
             break
 
     # wait for KeyBoardThread done 
+    cv2.destroyAllWindows()
     KB_T.join()
     env.reset()
     env.shotdown()
