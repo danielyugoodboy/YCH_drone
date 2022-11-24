@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Include the MAVROS node with SITL and Gazebo -->
+    <include file="$(find YCH_drone)/launch/mavros_posix_sitl_camDrone.launch">
+        <!-- Word name: Firmware/Tools/sitl_gazebo/worlds/-->
+        <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/empty.world"/>
+    </include>
+
+</launch>

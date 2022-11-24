@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <!-- Include the MAVROS node with SITL and Gazebo -->
-    <include file="$(find px4)/launch/mavros_posix_sitl.launch">
+    <include file="$(find px4)/launch/multi_uav_mavros_sitl.launch">
         <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/warehouse.world"/>
     </include>
 
