@@ -64,17 +64,10 @@ This is a side project about Px4 on Gazebo
         toml \
         pyquaternion
     ```
+
     ```
     $ pip install empy
     $ pip3 install empy
-    ```
-
-* 安裝 ros_numpy
-    ```
-    $ cd
-    $ git clone https://github.com/eric-wieser/ros_numpy.git
-    $ cd ros_numpy/
-    $ python3 setup.py install
     ```
 
 * 安裝 catkin-tools & rosinstall
@@ -159,6 +152,18 @@ This is a side project about Px4 on Gazebo
 
 
 ### 1-6 執行
+* 有一些額外的東西需要安裝
+
+    ```
+    # 1. Install openCV
+    $ pip install opencv-python
+
+    # 2. Install ros_numpy
+    $ cd
+    $ git clone https://github.com/eric-wieser/ros_numpy.git
+    $ cd ros_numpy/
+    $ python3 setup.py install
+    ```
 
 * 修改無人機中的相機角度與位置(自行選擇要不要修改)
 
