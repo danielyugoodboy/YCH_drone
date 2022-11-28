@@ -25,35 +25,35 @@ class TK_KeyBoardThread(threading.Thread):
     
     def xFunc_press(self, event):
         # forward / go_back / left / right
-        global observation, action, press_time, command
-        if observation is not None and action is not None and self.start_control:
-            yaw = observation.pose[1][2]
-            l_yaw = observation.pose[1][2]+math.pi/2
-            r_yaw = observation.pose[1][2]-math.pi/2
-            rate = 3
+        global action, press_time, command
+        if action is not None and self.start_control:
 
             if event.char == 'w':
-                action[0][0] = observation.pose[0][0] + rate*math.cos(yaw)
-                action[0][1] = observation.pose[0][1] + rate*math.sin(yaw)
+                if action[0][0] < 10: 
+                    action[0][0]+=0.1
             elif event.char == 's':
-                action[0][0] = observation.pose[0][0]-rate*math.cos(yaw)
-                action[0][1] = observation.pose[0][1]-rate*math.sin(yaw)
+                if action[0][0] > -10: 
+                    action[0][0]-=0.1
             elif event.char == 'a':
-                action[0][0] = observation.pose[0][0]-rate*math.cos(r_yaw)
-                action[0][1] = observation.pose[0][1]-rate*math.sin(r_yaw)
+                if action[0][1] < 10: 
+                    action[0][1]+=0.1
             elif event.char == 'd':
-                action[0][0] = observation.pose[0][0]-rate*math.cos(l_yaw)
-                action[0][1] = observation.pose[0][1]-rate*math.sin(l_yaw)
+                if action[0][1] > -10: 
+                    action[0][1]-=0.1
             
             # up / down / counterClockwise /Clockwise
             elif event.char == 'i':
-                action[0][2] = observation.pose[0][2]+rate*0.5
+                if action[0][2] < 5: 
+                    action[0][2]+=0.1
             elif event.char == 'k':
-                action[0][2] = observation.pose[0][2]-rate*0.5
+                if action[0][2] > -5: 
+                    action[0][2]-=0.1
             elif event.char == 'j':
-                action[1][2] = observation.pose[1][2]+1
+                if action[1][2] < 1: 
+                    action[1][2]+=0.05
             elif event.char == 'l':
-                action[1][2] = observation.pose[1][2]-1
+                if action[1][2] > -1: 
+                    action[1][2]-=0.05
             
             press_time = time.time()
             command = True
@@ -76,7 +76,7 @@ class TK_KeyBoardThread(threading.Thread):
 
 def main():
     global Done
-    global observation, action, press_time, command
+    global action, press_time, command
 
     env = ENV()
     observation = env.reset()
@@ -84,25 +84,26 @@ def main():
     KB_T = TK_KeyBoardThread()
     KB_T.start()
 
-    action = observation.pose.copy()
-    action[1] = np.array([0,0,0])
+    action = np.array([[0,0,0],[0,0,0]])
     KB_T.start_control = True
 
     # Control Loop
     while True:
         # make drone stable
-        
-        if (time.time()-press_time)>0.1 and command:
-            action = observation.pose.copy()
+        if (time.time()-press_time)>0.1:
+            action = action/1.5
+            
+        elif (time.time()-press_time)>1 and command:
+            action = np.array([[0,0,0],[0,0,0]])
             command = False
         
-
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
 
-        print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
-        next_observation, reward, done, info = env.step(action)
+        #print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
+        print(env._PoseStamped2np(env.current_pos)[1][2])
+        next_observation, reward, done, info = env.velocity_step(action)
         observation = next_observation
         if Done:
             break
@@ -112,6 +113,7 @@ def main():
     KB_T.join()
     env.reset()
     env.shotdown()
+
 
 if __name__ == "__main__":
     main()

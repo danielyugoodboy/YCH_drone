@@ -9,6 +9,7 @@ import numpy as np
 import ros_numpy
 from sensor_msgs.msg import Imu, Image
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import TwistStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
 
@@ -64,6 +65,7 @@ class Drone_Enviroment():
 
         # Set publisher
         self.local_pos_pub = rospy.Publisher("mavros/setpoint_position/local", PoseStamped, queue_size=10)
+        self.setpoint_velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel',TwistStamped, queue_size = 10)
 
         # Set client
         print("[State] : Wait for Arming service")
@@ -100,7 +102,7 @@ class Drone_Enviroment():
         image = ros_numpy.numpify(data).copy()
         self.current_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    def step(self, action):
+    def position_step(self, action):
         # Confirm current_state.mode == "OFFBOARD"，give 5 sec to wait
         if(self.current_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_req) > rospy.Duration(5.0)):
             if(self.set_mode_client.call(self.offb_set_mode).mode_sent == True):
@@ -118,6 +120,49 @@ class Drone_Enviroment():
 
         # Publish action
         self.local_pos_pub.publish(self._np2PoseStamped(action))
+
+        # Get observation
+        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.img = self.current_img
+
+        # Calculate reward (for reinforcement learning)
+        reward = 0
+
+        # Done or not
+        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
+        if linear_distant >= 10:
+            self.done = True
+        
+        # Info
+        info = "Nothing"
+
+        self.rate.sleep()
+        return self.observation, reward, self.done, info
+
+    def velocity_step(self, action):
+        # Confirm current_state.mode == "OFFBOARD"，give 5 sec to wait
+        if(self.current_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_req) > rospy.Duration(5.0)):
+            if(self.set_mode_client.call(self.offb_set_mode).mode_sent == True):
+                rospy.loginfo("OFFBOARD enabled")
+
+            self.last_req = rospy.Time.now()
+
+        # Confirm current_state.armed == True，give 5 sec to wait
+        else:
+            if(not self.current_state.armed and (rospy.Time.now() - self.last_req) > rospy.Duration(5.0)):
+                if(self.arming_client.call(self.arm_cmd).success == True):
+                    rospy.loginfo("Vehicle armed")
+
+                self.last_req = rospy.Time.now()
+        
+        # Publish action
+        set_velocity = TwistStamped()
+        yaw = self._PoseStamped2np(self.current_pos)[1][2]
+        set_velocity.twist.linear.x = action[0][0]*math.cos(yaw)-action[0][1]*math.sin(yaw)
+        set_velocity.twist.linear.y = action[0][0]*math.sin(yaw)+action[0][1]*math.cos(yaw)
+        set_velocity.twist.linear.z = action[0][2]
+        set_velocity.twist.angular.z = action[1][2]
+        self.setpoint_velocity_pub.publish(set_velocity)
 
         # Get observation
         self.observation.pose = self._PoseStamped2np(self.current_pos)
@@ -163,7 +208,7 @@ class Drone_Enviroment():
                 print("[State] : Initialize Done")
                 break
             else:
-                self.step(init_action)
+                self.position_step(init_action)
         
             # calculate FPS
             current_time = time.time()
@@ -212,6 +257,12 @@ class Drone_Enviroment():
         X = pose.pose.position.x
         Y = pose.pose.position.y
         Z = pose.pose.position.z
+        
+        if pose.pose.orientation.w >1:
+            pose.pose.orientation.w = 1
+        elif pose.pose.orientation.w < -1:
+            pose.pose.orientation.w = -1
+        
         # 第一二象限
         if (pose.pose.orientation.z*pose.pose.orientation.w)>0:
             yaw = math.acos(abs(pose.pose.orientation.w))*2
@@ -224,3 +275,15 @@ class Drone_Enviroment():
 
     def _myhook(self):
         print("[State] : ROS shutdown, Drone Back to home !")
+
+
+def test_main():
+    env = Drone_Enviroment()
+    observation = env.reset()
+    action = np.array([[0,2,0],[0,0,0]])
+    while True:
+        env.velocity_step(action)
+
+
+if __name__ == "__main__":
+    test_main()

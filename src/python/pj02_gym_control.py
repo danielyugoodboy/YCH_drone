@@ -8,9 +8,9 @@ class myAgent():
         pass
 
     def select_action(self,obs):
-        x_dir = obs.pose[0][0]+1
+        x_dir = 1
         y_dir = 0
-        z_dir = 2
+        z_dir = 0
         pitch = 0
         row = 0
         yaw = 0
@@ -43,7 +43,7 @@ def main(args):
         print("Start Episode : {}".format(ep+1))
         while True:
             action = agent.select_action(observation)
-            next_observation, reward, done, info = env.step(action)
+            next_observation, reward, done, info = env.velocity_step(action)
             observation = next_observation
             if done:
                 break
