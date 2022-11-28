@@ -61,7 +61,7 @@ class Drone_Enviroment():
         # Set subscriber
         state_sub = rospy.Subscriber("mavros/state", State, callback = self.state_cb)
         local_pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, callback = self.pos_cb)
-        local_pos_sub = rospy.Subscriber('/iris/usb_cam/image_raw', Image, callback = self.img_cb)
+        local_img_sub = rospy.Subscriber('/iris/usb_cam/image_raw', Image, callback = self.img_cb)
 
         # Set publisher
         self.local_pos_pub = rospy.Publisher("mavros/setpoint_position/local", PoseStamped, queue_size=10)
