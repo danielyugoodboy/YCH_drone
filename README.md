@@ -25,7 +25,7 @@ This is a side project about Px4 on Gazebo
 ## 0. 電腦配置
 * Ubuntu 18.04
 * ROS melodic
-* python=3.8 (推薦)
+* python=3.9 (推薦)
 
 
 ## 1. 安裝教學
