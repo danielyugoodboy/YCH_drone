@@ -12,7 +12,6 @@ Done = False
 observation = None
 action = None
 press_time = time.time()
-command = False
 
 class TK_KeyBoardThread(threading.Thread):
     def __init__(self):
@@ -25,20 +24,20 @@ class TK_KeyBoardThread(threading.Thread):
     
     def xFunc_press(self, event):
         # forward / go_back / left / right
-        global action, press_time, command
+        global action, press_time
         if action is not None and self.start_control:
 
             if event.char == 'w':
-                if action[0][0] < 10: 
+                if action[0][0] < 5: 
                     action[0][0]+=0.1
             elif event.char == 's':
-                if action[0][0] > -10: 
+                if action[0][0] > -5: 
                     action[0][0]-=0.1
             elif event.char == 'a':
-                if action[0][1] < 10: 
+                if action[0][1] < 5: 
                     action[0][1]+=0.1
             elif event.char == 'd':
-                if action[0][1] > -10: 
+                if action[0][1] > -5: 
                     action[0][1]-=0.1
             
             # up / down / counterClockwise /Clockwise
@@ -49,14 +48,13 @@ class TK_KeyBoardThread(threading.Thread):
                 if action[0][2] > -5: 
                     action[0][2]-=0.1
             elif event.char == 'j':
-                if action[1][2] < 1: 
-                    action[1][2]+=0.05
+                if action[1][2] < 0.5: 
+                    action[1][2]+=0.1
             elif event.char == 'l':
-                if action[1][2] > -1: 
-                    action[1][2]-=0.05
+                if action[1][2] > -0.5: 
+                    action[1][2]-=0.1
             
             press_time = time.time()
-            command = True
 
     def run(self):
         global Done
@@ -76,7 +74,7 @@ class TK_KeyBoardThread(threading.Thread):
 
 def main():
     global Done
-    global action, press_time, command
+    global action, press_time
 
     env = ENV()
     observation = env.reset()
@@ -90,19 +88,18 @@ def main():
     # Control Loop
     while True:
         # make drone stable
-        if (time.time()-press_time)>0.1:
-            action = action/1.5
-            
-        elif (time.time()-press_time)>1 and command:
+        if (time.time()-press_time)>0.1 :
+            action = action/4
+            action[1][2] = 0
+
+        elif (time.time()-press_time)>0.5 :
             action = np.array([[0,0,0],[0,0,0]])
-            command = False
         
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
 
         #print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
-        print(env._PoseStamped2np(env.current_pos)[1][2])
         next_observation, reward, done, info = env.velocity_step(action)
         observation = next_observation
         if Done:

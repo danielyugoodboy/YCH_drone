@@ -228,6 +228,7 @@ class Drone_Enviroment():
 
     def _np2PoseStamped(self, np_action):
         '''
+        Eularian to Quaternion
         這邊的姿態使用的是四元數（Quaternion）
         q = cos(theta/2)+sin(theta/2)n
         q = cos(theta/2)+sin(theta/2)i+sin(theta/2)j+sin(theta/2)k
@@ -246,7 +247,10 @@ class Drone_Enviroment():
 
     def _PoseStamped2np(self, pose):
         '''
+        Quaternion to Eularian
+        https://www.cnblogs.com/21207-ihome/p/6894128.html
         這邊的姿態使用的是四元數（Quaternion）
+
         q = cos(theta/2)+sin(theta/2)n
         q = cos(theta/2)+sin(theta/2)i+sin(theta/2)j+sin(theta/2)k
         q = w + xi + yj + zk
@@ -254,24 +258,25 @@ class Drone_Enviroment():
         第一二象限： z:- w:- or z:+ w:+
         第三四象限： z:+ w:- or z:- w:+
         '''
-        X = pose.pose.position.x
-        Y = pose.pose.position.y
-        Z = pose.pose.position.z
+        pos_X = pose.pose.position.x
+        pos_Y = pose.pose.position.y
+        pos_Z = pose.pose.position.z
         
-        if pose.pose.orientation.w >1:
-            pose.pose.orientation.w = 1
-        elif pose.pose.orientation.w < -1:
-            pose.pose.orientation.w = -1
+        q_w = pose.pose.orientation.w
+        q_x = pose.pose.orientation.x
+        q_y = pose.pose.orientation.y
+        q_z = pose.pose.orientation.z
+
+        # roll
+        #roll = math.atan2(2*(q_w*q_x + q_y*q_z), 1-2*(q_x**2 + q_y**2))
         
-        # 第一二象限
-        if (pose.pose.orientation.z*pose.pose.orientation.w)>0:
-            yaw = math.acos(abs(pose.pose.orientation.w))*2
+        # pitch
+        #pitch  = math.asin(np.clip(2*(q_w*q_y - q_z*q_z), -1.0, 1.0))
 
-        # 第三四象限
-        else:
-            yaw = -math.acos(abs(pose.pose.orientation.w))*2
+        # yaw
+        yaw = math.atan2(2*(q_w*q_z + q_x*q_y), 1-2*(q_y**2 + q_z**2))
 
-        return np.array([[X,Y,Z],[0,0,yaw]])
+        return np.array([[pos_X,pos_Y,pos_Z],[0, 0, yaw]])
 
     def _myhook(self):
         print("[State] : ROS shutdown, Drone Back to home !")
