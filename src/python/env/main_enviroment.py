@@ -200,9 +200,9 @@ class Drone_Enviroment():
         init_time = time.time()
         self.last_req = rospy.Time.now()
         while(not rospy.is_shutdown()):
-            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.1
-            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.1
-            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.1
+            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.2
+            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.2
+            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.2
 
             if C_1 and C_2 and C_3:  # 1cm
                 print("[State] : Initialize Done")

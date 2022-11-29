@@ -8,10 +8,32 @@ import numpy as np
 from PIL import Image, ImageTk
 from env.main_enviroment import Drone_Enviroment as ENV
 
+'''
+Tutorial:
+
+w : forward
+s : go back
+a : left
+d : right
+
+i : up
+k : down
+j : counterClockwise
+l : Clockwise
+
+p : lock the drone
+n : unlock the drone
+h : back to inital point
+
+'''
+
 Done = False
 observation = None
 action = None
 press_time = time.time()
+drone_lock = True
+already_locked = False
+back_to_home = False
 
 class TK_KeyBoardThread(threading.Thread):
     def __init__(self):
@@ -24,9 +46,10 @@ class TK_KeyBoardThread(threading.Thread):
     
     def xFunc_press(self, event):
         # forward / go_back / left / right
-        global action, press_time
+        global action, press_time, drone_lock, already_locked, back_to_home
         if action is not None and self.start_control:
-
+            
+            # forward / back / left / right
             if event.char == 'w':
                 if action[0][0] < 5: 
                     action[0][0]+=0.1
@@ -54,6 +77,19 @@ class TK_KeyBoardThread(threading.Thread):
                 if action[1][2] > -0.5: 
                     action[1][2]-=0.1
             
+            # drone lock
+            elif event.char == 'p':
+                drone_lock = True 
+            
+            elif event.char == 'n':
+                drone_lock = False
+                already_locked = False
+
+            elif event.char == 'h':
+                back_to_home = True
+                drone_lock = True 
+                already_locked = False
+            
             press_time = time.time()
 
     def run(self):
@@ -74,7 +110,7 @@ class TK_KeyBoardThread(threading.Thread):
 
 def main():
     global Done
-    global action, press_time
+    global action, press_time, drone_lock, already_locked, back_to_home
 
     env = ENV()
     observation = env.reset()
@@ -87,21 +123,42 @@ def main():
 
     # Control Loop
     while True:
-        # make drone stable
-        if (time.time()-press_time)>0.1 :
-            action = action/4
-            action[1][2] = 0
+        # Drone is locked
+        if drone_lock:
+            if already_locked:
+                pass 
+            else :
+                old_observation = copy.copy(observation)
+                already_locked = True
 
-        elif (time.time()-press_time)>0.5 :
-            action = np.array([[0,0,0],[0,0,0]])
+            print("Drone is locked, press [n-key] to unlock !! , press [p-key] to lock again !!   ", end='\r')
+            next_observation, reward, done, info = env.position_step(old_observation.pose)
+            observation = next_observation
+
+        # Drone is unlocked
+        else:
+            # fly
+            if (time.time()-press_time)>0.1 :
+                action = action/4
+                action[1][2] = 0
+
+            elif (time.time()-press_time)>0.5 :
+                action = np.array([[0,0,0],[0,0,0]])
+
+            print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
+            next_observation, reward, done, info = env.velocity_step(action)
+            observation = next_observation
         
+        if back_to_home:
+            observation = env.reset()
+            back_to_home = False
+            drone_lock = True
+            already_locked = False
+
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
 
-        #print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
-        next_observation, reward, done, info = env.velocity_step(action)
-        observation = next_observation
         if Done:
             break
 
