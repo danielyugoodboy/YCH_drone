@@ -8,11 +8,32 @@ import numpy as np
 from PIL import Image, ImageTk
 from env.main_enviroment import Drone_Enviroment as ENV
 
+'''
+Tutorial:
+
+w : forward
+s : go back
+a : left
+d : right
+
+i : up
+k : down
+j : counterClockwise
+l : Clockwise
+
+p : lock the drone
+n : unlock the drone
+h : back to inital point
+
+'''
+
 Done = False
 observation = None
 action = None
 press_time = time.time()
-command = False
+drone_lock = True
+already_locked = False
+back_to_home = False
 
 class TK_KeyBoardThread(threading.Thread):
     def __init__(self):
@@ -25,38 +46,51 @@ class TK_KeyBoardThread(threading.Thread):
     
     def xFunc_press(self, event):
         # forward / go_back / left / right
-        global observation, action, press_time, command
-        if observation is not None and action is not None and self.start_control:
-            yaw = observation.pose[1][2]
-            l_yaw = observation.pose[1][2]+math.pi/2
-            r_yaw = observation.pose[1][2]-math.pi/2
-            rate = 1.5
-
+        global action, press_time, drone_lock, already_locked, back_to_home
+        if action is not None and self.start_control:
+            
+            # forward / back / left / right
             if event.char == 'w':
-                action[0][0] = observation.pose[0][0] + rate*math.cos(yaw)
-                action[0][1] = observation.pose[0][1] + rate*math.sin(yaw)
+                if action[0][0] < 5: 
+                    action[0][0]+=0.1
             elif event.char == 's':
-                action[0][0] = observation.pose[0][0]-rate*math.cos(yaw)
-                action[0][1] = observation.pose[0][1]-rate*math.sin(yaw)
+                if action[0][0] > -5: 
+                    action[0][0]-=0.1
             elif event.char == 'a':
-                action[0][0] = observation.pose[0][0]-rate*math.cos(r_yaw)
-                action[0][1] = observation.pose[0][1]-rate*math.sin(r_yaw)
+                if action[0][1] < 5: 
+                    action[0][1]+=0.1
             elif event.char == 'd':
-                action[0][0] = observation.pose[0][0]-rate*math.cos(l_yaw)
-                action[0][1] = observation.pose[0][1]-rate*math.sin(l_yaw)
+                if action[0][1] > -5: 
+                    action[0][1]-=0.1
             
             # up / down / counterClockwise /Clockwise
             elif event.char == 'i':
-                action[0][2] = observation.pose[0][2]+0.5
+                if action[0][2] < 5: 
+                    action[0][2]+=0.1
             elif event.char == 'k':
-                action[0][2] = observation.pose[0][2]-0.5
+                if action[0][2] > -5: 
+                    action[0][2]-=0.1
             elif event.char == 'j':
-                action[1][2] = observation.pose[1][2]+rate*0.5
+                if action[1][2] < 0.5: 
+                    action[1][2]+=0.1
             elif event.char == 'l':
-                action[1][2] = observation.pose[1][2]-rate*0.5
+                if action[1][2] > -0.5: 
+                    action[1][2]-=0.1
+            
+            # drone lock
+            elif event.char == 'p':
+                drone_lock = True 
+            
+            elif event.char == 'n':
+                drone_lock = False
+                already_locked = False
+
+            elif event.char == 'h':
+                back_to_home = True
+                drone_lock = True 
+                already_locked = False
             
             press_time = time.time()
-            command = True
 
     def run(self):
         global Done
@@ -76,7 +110,7 @@ class TK_KeyBoardThread(threading.Thread):
 
 def main():
     global Done
-    global observation, action, press_time, command
+    global action, press_time, drone_lock, already_locked, back_to_home
 
     env = ENV()
     observation = env.reset()
@@ -84,23 +118,47 @@ def main():
     KB_T = TK_KeyBoardThread()
     KB_T.start()
 
-    action = observation.pose.copy()
+    action = np.array([[0,0,0],[0,0,0]])
     KB_T.start_control = True
 
     # Control Loop
     while True:
-        # make drone stable
-        if (time.time()-press_time)>0.1 and command:
-            action = observation.pose.copy()
-            command = False
+        # Drone is locked
+        if drone_lock:
+            if already_locked:
+                pass 
+            else :
+                old_observation = copy.copy(observation)
+                already_locked = True
+
+            print("Drone is locked, press [n-key] to unlock !! , press [p-key] to lock again !!   ", end='\r')
+            next_observation, reward, done, info = env.position_step(old_observation.pose)
+            observation = next_observation
+
+        # Drone is unlocked
+        else:
+            # fly
+            if (time.time()-press_time)>0.1 :
+                action = action/4
+                action[1][2] = 0
+
+            elif (time.time()-press_time)>0.5 :
+                action = np.array([[0,0,0],[0,0,0]])
+
+            print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
+            next_observation, reward, done, info = env.velocity_step(action)
+            observation = next_observation
         
+        if back_to_home:
+            observation = env.reset()
+            back_to_home = False
+            drone_lock = True
+            already_locked = False
+
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
 
-        # print("Action XYZyaw : {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(action[0][0], action[0][1], action[0][2], action[1][2]), end='\r')
-        next_observation, reward, done, info = env.step(action)
-        observation = next_observation
         if Done:
             break
 
@@ -109,6 +167,7 @@ def main():
     KB_T.join()
     env.reset()
     env.shotdown()
+
 
 if __name__ == "__main__":
     main()
