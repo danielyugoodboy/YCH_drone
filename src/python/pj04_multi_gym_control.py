@@ -4,104 +4,124 @@ import time
 import math
 from env.multi_main_enviroment import Multi_Drone_Enviroment as ENV
 
+'''
+新增多台無人機：https://github.com/mavlink/mavros/issues/88：
+'''
+
 # ************************* Design Agent Start ************************* #
 class myAgent():
     def __init__(self):
         pass
 
-    def select_action(self,obs):
-        x_dir = 1
+    def select_action_set(self,obs_set):
+        x_dir = 2.5
         y_dir = 0
         z_dir = 0
         pitch = 0
         row = 0
         yaw = 0
 
-        action = np.array([[x_dir, y_dir, z_dir], [pitch, row, yaw]])
-        return action
+        action_set = []
+        for i in range(len(obs_set)):
+            action = np.array([[x_dir, y_dir, z_dir], [pitch, row, yaw]])
+            action_set.append(action)
+        return action_set
 
 # ************************* Design Agent Stop  ************************* #
 
-def reset_drone_set(env_1, env_2):
-    init_action_1 = np.array([[0,0,2],[0,0,0*(math.pi/180)]])
-    init_action_2 = np.array([[2,0,2],[0,0,0*(math.pi/180)]])
+def reset_drone_set(env_set):
+    # 注意！ 每一台無人機都會默認自己的起始位置是座標原點[0,0,0]，並不是global frame!!
+    init_action = np.array([[0,0,2],[0,0,0*(math.pi/180)]])
+    num_env = len(env_set)
 
+    # If Ros is not shut down, pre publish 100 data first
     for i in range(100):   
-        if(env_1.checkRosShutdown() or env_2.checkRosShutdown()):
+        checkRosShutdownSet = False
+        for i in range(num_env):
+            checkRosShutdownSet = checkRosShutdownSet and env_set[i].checkRosShutdown()
+        if checkRosShutdownSet:
             break
         else:
             print("Wait for reset setpoint : {}".format(i+1) + " % ", end='\r')
-            env_1.local_pos_pub.publish(env_1._np2PoseStamped(init_action_1))
-            env_2.local_pos_pub.publish(env_2._np2PoseStamped(init_action_2))
-            env_1.rate.sleep()
+            for i in range(num_env):
+                env_set[i].local_pos_pub.publish(env_set[i]._np2PoseStamped(init_action))
+            env_set[0].rate.sleep()  # 60 FPS
 
     print("[State] : Reset & Wait the Drone to the initial point")
     init_time = time.time()
-    env_1.setRosTime()
-    env_2.setRosTime()
+    for i in range(num_env):
+        env_set[i].setRosTime()
     while True:
-        C_1_1 = abs(env_1.current_pos.pose.position.x - init_action_1[0][0]) < 0.1
-        C_1_2 = abs(env_1.current_pos.pose.position.y - init_action_1[0][1]) < 0.1
-        C_1_3 = abs(env_1.current_pos.pose.position.z - init_action_1[0][2]) < 0.1
-        C_1 = C_1_1 and C_1_2 and C_1_3
+        condition_set = True
+        for i in range(num_env):
+            C_x = abs(env_set[i].current_pos.pose.position.x - init_action[0][0])
+            C_y = abs(env_set[i].current_pos.pose.position.y - init_action[0][1])
+            C_z = abs(env_set[i].current_pos.pose.position.z - init_action[0][2])
+            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.1
+            condition_set = condition_set and condition
 
-        C_2_1 = abs(env_2.current_pos.pose.position.x - init_action_2[0][0]) < 0.1
-        C_2_2 = abs(env_2.current_pos.pose.position.y - init_action_2[0][1]) < 0.1
-        C_2_3 = abs(env_2.current_pos.pose.position.z - init_action_2[0][2]) < 0.1
-        C_2 = C_2_1 and C_2_2 and C_2_3
-
-        if C_1 and C_2:
+        if condition_set:
             print("[State] : Initialize Done")
             break
         else:
-            env_1.position_step(init_action_1)
-            env_2.position_step(init_action_2)
+            for i in range(num_env):
+                env_set[i].position_step(init_action)
 
         current_time = time.time()
         print("Waiting Reset... / FPS : " + "{:.1f}".format(1/(current_time-init_time)), end='\r')
         init_time = current_time
     
-    env_1.done = False
-    env_2.done = False
+    observation_set = []
+    for i in range(num_env):
+        env_set[i].done = False
+        env_set[i].observation.pose = env_set[i]._PoseStamped2np(env_set[i].current_pos)
+        env_set[i].observation.img = env_set[i].current_img
+        observation_set.append(env_set[i].observation)
+
     print("[State] : Reset Done")
 
-    env_1.observation.pose = env_1._PoseStamped2np(env_1.current_pos)
-    env_1.observation.img = env_1.current_img
-    env_2.observation.pose = env_2._PoseStamped2np(env_2.current_pos)
-    env_2.observation.img = env_2.current_img
+    return observation_set
 
-    return [env_1.observation, env_2.observation]
+def velocity_step_set(env_set, action_set):     
+        next_observation_set = []
+        done_set = True
+        for i in range(len(env_set)):
+            next_observation, reward, done, info = env_set[i].velocity_step(action_set[i])
+            next_observation_set.append(next_observation)
+            done_set = done_set and done
+
+        return next_observation_set, done_set
+
+def shotdown_set(env_set):
+    for i in range(len(env_set)):
+        env_set[i].shotdown()
 
 def main(args):
-    env_1 = ENV("/uav1")
-    env_2 = ENV("/uav2")
+    env_set = []
+    for i in range(args.drone_num):
+        print("Create Drone {}".format(i+1))
+        env = ENV("/uav"+str(i+1))
+        env_set.append(env)
 
     agent = myAgent()
     
     for ep in range(2):
-        observation_set = reset_drone_set(env_1, env_2)
-        observation_1 = observation_set[0]
-        observation_2 = observation_set[1]
+        observation_set = reset_drone_set(env_set)
 
         print("Start Episode : {}".format(ep+1))
         while True:
-            action_1 = agent.select_action(observation_1)
-            action_2 = agent.select_action(observation_2)
-            next_observation_1, reward_1, done_1, info_1 = env_1.velocity_step(action_1)
-            next_observation_2, reward_2, done_2, info_2 = env_2.velocity_step(action_2)
-            observation_1 = next_observation_1
-            observation_2 = next_observation_2
+            action_set = agent.select_action_set(observation_set)
+            next_observation_set, done_set = velocity_step_set(env_set, action_set)
+            observation_set = next_observation_set
             
-            if done_1 and done_2:
+            if done_set:
                 break
     
-    reset_drone_set(env_1, env_2)
-    
-    env_1.shotdown()
-    env_2.shotdown()
+    reset_drone_set(env_set)
+    shotdown_set(env_set)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test", default=1.0, type=float, help="Just For Test")
+    parser.add_argument("--drone_num", default=3, type=int, help="Total Drone Number")
     args = parser.parse_args()
     main(args)
