@@ -21,23 +21,8 @@ class myAgent():
         return action
 
 # ************************* Design Agent Stop  ************************* #
-'''
-1. action :
-numpy array
-shape = (2, 3)
-np.array([x,y,z],[pitch, roll, yaw])
 
-2. observation.pose :
-numpy array
-shape = (2, 3)
-np.array([x,y,z],[pitch, roll, yaw])
-
-3. observation.img :
-numpy array
-shape = (240, 320, 3)
-'''
-
-def reset_drone(env_1, env_2):
+def reset_drone_set(env_1, env_2):
     init_action_1 = np.array([[0,0,2],[0,0,0*(math.pi/180)]])
     init_action_2 = np.array([[2,0,2],[0,0,0*(math.pi/180)]])
 
@@ -94,7 +79,7 @@ def main(args):
     agent = myAgent()
     
     for ep in range(2):
-        observation_set = reset_drone(env_1, env_2)
+        observation_set = reset_drone_set(env_1, env_2)
         observation_1 = observation_set[0]
         observation_2 = observation_set[1]
 
@@ -110,7 +95,7 @@ def main(args):
             if done_1 and done_2:
                 break
     
-    reset_drone(env_1, env_2)
+    reset_drone_set(env_1, env_2)
     
     env_1.shotdown()
     env_2.shotdown()

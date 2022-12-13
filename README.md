@@ -150,7 +150,6 @@ This is a side project about Px4 on Gazebo
     $ catkin build YCH_drone --no-deps
     ```
 
-
 ### 1-6 執行
 * 有一些額外的東西需要安裝
 
@@ -198,6 +197,8 @@ This is a side project about Px4 on Gazebo
     </model>
     </sdf>
     ```
+    
+#### A. Single Drone
 
 * 開啟一個終端 - 開啟gazebo環境
 
@@ -206,7 +207,7 @@ This is a side project about Px4 on Gazebo
     ```
     ![](https://i.imgur.com/1pJ1erm.jpg)
 
-* 另外開啟一個終端 (啟動執行檔)
+* 另外開啟一個終端 - 啟動執行檔
 
     A. KryBoard control
     ```
@@ -229,6 +230,23 @@ This is a side project about Px4 on Gazebo
     ```
     ![](https://i.imgur.com/rRV9C8N.png)
 
+#### B. Multi Drone
+
+* 開啟一個終端 - 開啟gazebo環境
+
+    ```
+    $ roslaunch YCH_drone start_Enviroment_2_multi_drone.launch
+    ```
+    ![](https://i.imgur.com/BhTaIAc.png)
+
+* 另外開啟一個終端 - 啟動執行檔
+
+    B. Gym Envirom
+    ```
+    $ cd ~/drone_ws/src/YCH_drone/src/python
+    $ python pj04_multi_gym_control.py
+    ```
+    ![](https://i.imgur.com/Q5fVbZj.png)
 
 ## 2. Git 筆記
 

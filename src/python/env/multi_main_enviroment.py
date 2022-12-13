@@ -20,22 +20,22 @@ Ref：https://github.com/danielyugoodboy/NCRL-AIDrone-Platform/tree/master/src
 Flying Mode：https://docs.px4.io/main/zh/getting_started/flight_modes.html
 MAVROS Basics: http://edu.gaitech.hk/gapter/mavros-basics.html
 MAVROS_Tutorial: https://masoudir.github.io/mavros_tutorial/
-
-Design different flying mode：
-1.Position
-2.RPYT
-
 '''
 
 class Drone_observation():
     def __init__(self):
         '''
-        pose :
+        1. action :
         numpy array
         shape = (2, 3)
         np.array([x,y,z],[pitch, roll, yaw])
 
-        img :
+        2. observation.pose :
+        numpy array
+        shape = (2, 3)
+        np.array([x,y,z],[pitch, roll, yaw])
+
+        3. observation.img :
         numpy array
         shape = (240, 320, 3)
         '''
@@ -43,7 +43,7 @@ class Drone_observation():
         self.img = None
 
 class Multi_Drone_Enviroment():
-    def __init__(self, drone_name):
+    def __init__(self, drone_name=""):
         print("[State] : Start Drone Enviroment")
         rospy.init_node("main_enviroemnt")
 
@@ -293,7 +293,7 @@ class Multi_Drone_Enviroment():
 
 
 def test_main():
-    env = Drone_Enviroment()
+    env = Multi_Drone_Enviroment("/uav1")
     observation = env.reset()
     action = np.array([[0,2,0],[0,0,0]])
     while True:
