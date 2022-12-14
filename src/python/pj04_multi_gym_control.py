@@ -5,7 +5,19 @@ import math
 from env.multi_main_enviroment import Multi_Drone_Enviroment as ENV
 
 '''
-新增多台無人機：https://github.com/mavlink/mavros/issues/88：
+To add a third iris to this simulation there are two main components to consider:
+
+* 把UAV3 添加到multi_uav_mavros_sitl.launch
+    *复制已经存在的四旋翼(UAV1 或者 UAV2)
+    * 把 ID 改为 3
+    * 与gazebo的通信，选择一个不同的 mavlink_udp_port端口
+    * MAVROS通信端口选择是通过在fcu_url 中修改两个端口号。
+* 创建一个开始文件，并按照如下方式修改：
+    * 复制已存在的iris rcs启动文件，(iris_1 或 iris_2) ，重命名为iris_3
+    * MAV_SYS_ID 值改为3
+    * SITL_UDP_PRT 的值与 mavlink_udp_port相一致。
+    * 第一个mavlink start 端口和mavlink stream端口值设置为相同值，用于和QGC通信。
+    * 第二个mavlink start 端口值应与启动文件 fcu_url 中的值一致。
 '''
 
 # ************************* Design Agent Start ************************* #
@@ -35,17 +47,17 @@ def reset_drone_set(env_set):
     num_env = len(env_set)
 
     # If Ros is not shut down, pre publish 100 data first
-    for i in range(100):   
+    for j in range(100):   
         checkRosShutdownSet = False
         for i in range(num_env):
-            checkRosShutdownSet = checkRosShutdownSet and env_set[i].checkRosShutdown()
+            checkRosShutdownSet = checkRosShutdownSet or env_set[i].checkRosShutdown()
         if checkRosShutdownSet:
             break
         else:
-            print("Wait for reset setpoint : {}".format(i+1) + " % ", end='\r')
             for i in range(num_env):
                 env_set[i].local_pos_pub.publish(env_set[i]._np2PoseStamped(init_action))
-            env_set[0].rate.sleep()  # 60 FPS
+        print("Wait for reset setpoint : {}".format(j+1) + " % ", end='\r')
+        env_set[0].rate.sleep()  # 60 FPS
 
     print("[State] : Reset & Wait the Drone to the initial point")
     init_time = time.time()

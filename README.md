@@ -197,7 +197,15 @@ This is a side project about Px4 on Gazebo
     </model>
     </sdf>
     ```
-    
+
+#### gazebo 報錯 [Err] [REST.cc:205] Error in REST request 解決
+
+* 將 url:  https://api.ignitionfuel.org 改成 url:  https://api.ignitionrobotics.org
+
+    ```
+    $ gedit .ignition/fuel/config.yaml
+    ```
+
 #### A. Single Drone
 
 * 開啟一個終端 - 開啟gazebo環境
