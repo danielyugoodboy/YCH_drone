@@ -28,10 +28,10 @@ class myAgent():
     def select_action_set(self,obs_set):
         x_dir = 2.5
         y_dir = 0
-        z_dir = 0.5
+        z_dir = 0
         pitch = 0
         row = 0
-        yaw = 0.2
+        yaw = 0
 
         action_set = []
         for i in range(len(obs_set)):
@@ -41,9 +41,44 @@ class myAgent():
 
 # ************************* Design Agent Stop  ************************* #
 
+class Virtual_Drone():
+    def __init__(self):
+        self.global_position = np.array([[0,0,0],[0,0,0]])
+        '''
+        formation_1:
+        X X 4 X X
+        X 2 X 3 X
+        X X 1 X X
+        '''
+        self.formation_1 = np.array([[[-2,0,0],[0,0,0]],
+                                     [[2,2,0],[0,0,0]],
+                                     [[2,-2,0],[0,0,0]],
+                                     [[2,0,0],[0,0,0]]])
+
+    def cal_current_pos(self, env_set):
+        drone_num = len(env_set)
+        pos_X, pos_Y, pos_Z, pos_Yaw = 0,0,0,0
+        for i in range(drone_num):
+            pos_X += env_set[i].observation.global_pose[0]
+            pos_Y += env_set[i].observation.global_pose[1]
+            pos_Z += env_set[i].observation.global_pose[2]
+            pos_Yaw += env_set[i].observation.local_pose[1][2]
+        
+        pos_Yaw = pos_Yaw*(180/math.pi)
+
+        self.global_position = np.array([[pos_X,pos_Y,pos_Z],[0,0,pos_Yaw]])/drone_num
+
+        return self.global_position
+
+    def cal_body_frame(self, vir_drone_pos, env_set):
+        drone_num = len(env_set)
+        for i in range(drone_num):
+            diff_pos = env_set[i]-vir_drone_pos
+
+
 def reset_drone_set(env_set):
     # 注意！ 每一台無人機都會默認自己的起始位置是座標原點[0,0,0]，並不是global frame!!
-    init_action = np.array([[0,0,2],[0,0,0*(math.pi/180)]])
+    init_position = np.array([[0,0,2],[0,0,0]])
     num_env = len(env_set)
 
     # If Ros is not shut down, pre publish 100 data first
@@ -55,7 +90,7 @@ def reset_drone_set(env_set):
             break
         else:
             for i in range(num_env):
-                env_set[i].local_pos_pub.publish(env_set[i]._np2PoseStamped(init_action))
+                env_set[i].local_pos_pub.publish(env_set[i]._np2PoseStamped(init_position))
         print("Wait for reset setpoint : {}".format(j+1) + " % ", end='\r')
         env_set[0].rate.sleep()  # 60 FPS
 
@@ -66,9 +101,9 @@ def reset_drone_set(env_set):
     while True:
         condition_set = True
         for i in range(num_env):
-            C_x = abs(env_set[i].current_pos.pose.position.x - init_action[0][0])
-            C_y = abs(env_set[i].current_pos.pose.position.y - init_action[0][1])
-            C_z = abs(env_set[i].current_pos.pose.position.z - init_action[0][2])
+            C_x = abs(env_set[i].current_pos.pose.position.x - init_position[0][0])
+            C_y = abs(env_set[i].current_pos.pose.position.y - init_position[0][1])
+            C_z = abs(env_set[i].current_pos.pose.position.z - init_position[0][2])
             condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.1
             condition_set = condition_set and condition
 
@@ -77,7 +112,7 @@ def reset_drone_set(env_set):
             break
         else:
             for i in range(num_env):
-                env_set[i].position_step(init_action)
+                env_set[i].position_step(init_position)
 
         current_time = time.time()
         print("Waiting Reset... / FPS : " + "{:.1f}".format(1/(current_time-init_time)), end='\r')
@@ -86,7 +121,7 @@ def reset_drone_set(env_set):
     observation_set = []
     for i in range(num_env):
         env_set[i].done = False
-        env_set[i].observation.pose = env_set[i]._PoseStamped2np(env_set[i].current_pos)
+        env_set[i].observation.local_pose = env_set[i]._PoseStamped2np(env_set[i].current_pos)
         env_set[i].observation.img = env_set[i].current_img
         observation_set.append(env_set[i].observation)
 
@@ -119,6 +154,7 @@ def main(args):
         env_set.append(env)
 
     agent = myAgent()
+    vir_drone = Virtual_Drone()
     
     for ep in range(2):
         observation_set = reset_drone_set(env_set)
@@ -133,13 +169,13 @@ def main(args):
             4. 控制主要在body frame當中控制
             5. 也就是回傳的值是body frame的僚機座標
             '''
-
+            vir_drone_pos = vir_drone.cal_current_pos(env_set)
+            print(vir_drone_pos)
 
 
 
 
             #******************************************************#  
-
             action_set = agent.select_action_set(observation_set)
             next_observation_set, done_set = velocity_step_set(env_set, action_set)
             observation_set = next_observation_set

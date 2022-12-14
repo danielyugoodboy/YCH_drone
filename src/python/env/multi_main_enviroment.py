@@ -28,21 +28,27 @@ MAVROS_Tutorial: https://masoudir.github.io/mavros_tutorial/
 class Drone_observation():
     def __init__(self):
         '''
-        1. action :
+        0. action :
         numpy array
         shape = (2, 3)
-        np.array([x,y,z],[pitch, roll, yaw])
+        np.array([[x,y,z],[pitch, roll, yaw]])
 
-        2. observation.pose :
+        1. observation.local_pose :
         numpy array
         shape = (2, 3)
-        np.array([x,y,z],[pitch, roll, yaw])
+        np.array([[x,y,z],[pitch, roll, yaw]])
+
+        2. observation.global_pose :
+        numpy array
+        shape = (3,)
+        np.array([x,y,z])
 
         3. observation.img :
         numpy array
         shape = (240, 320, 3)
         '''
-        self.pose = None
+        self.local_pose = None
+        self.global_pose = None
         self.img = None
 
 class Multi_Drone_Enviroment():
@@ -141,14 +147,15 @@ class Multi_Drone_Enviroment():
         self.local_pos_pub.publish(self._np2PoseStamped(action))
 
         # Get observation
-        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        self.observation.global_pose = self.current_global_pos
         self.observation.img = self.current_img
 
         # Calculate reward (for reinforcement learning)
         reward = 0
 
         # Done or not
-        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
+        linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
         if linear_distant >= 10:
             self.done = True
         
@@ -184,14 +191,15 @@ class Multi_Drone_Enviroment():
         self.setpoint_velocity_pub.publish(set_velocity)
 
         # Get observation
-        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        self.observation.global_pose = self.current_global_pos
         self.observation.img = self.current_img
 
         # Calculate reward (for reinforcement learning)
         reward = 0
 
         # Done or not
-        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
+        linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
         if linear_distant >= 10:
             self.done = True
         
@@ -237,7 +245,7 @@ class Multi_Drone_Enviroment():
         self.done = False
         print("[State] : Reset Done")
 
-        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
         self.observation.img = self.current_img
 
         return self.observation
