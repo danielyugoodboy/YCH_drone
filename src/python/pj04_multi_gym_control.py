@@ -28,10 +28,10 @@ class myAgent():
     def select_action_set(self,obs_set):
         x_dir = 2.5
         y_dir = 0
-        z_dir = 0
+        z_dir = 0.5
         pitch = 0
         row = 0
-        yaw = 0
+        yaw = 0.2
 
         action_set = []
         for i in range(len(obs_set)):
@@ -108,6 +108,9 @@ def shotdown_set(env_set):
     for i in range(len(env_set)):
         env_set[i].shotdown()
 
+def vel_PID_control(env_set, diff_pos_set):
+    pass
+
 def main(args):
     env_set = []
     for i in range(args.drone_num):
@@ -122,6 +125,21 @@ def main(args):
 
         print("Start Episode : {}".format(ep+1))
         while True:
+            #**************** Virtual Drone Design ****************#
+            '''
+            1. 虛擬無人機為 golbal frame 此資料來自 所有實體無人機的型心在進行微調 
+            2. 虛擬無人機主要是以位置與姿態控制，而非速度控制，這樣比較好保持隊形整齊
+            3. 也就是輸入值為虛擬無人機期望到達的位置與姿態
+            4. 控制主要在body frame當中控制
+            5. 也就是回傳的值是body frame的僚機座標
+            '''
+
+
+
+
+
+            #******************************************************#  
+
             action_set = agent.select_action_set(observation_set)
             next_observation_set, done_set = velocity_step_set(env_set, action_set)
             observation_set = next_observation_set

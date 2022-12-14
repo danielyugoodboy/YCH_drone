@@ -7,13 +7,16 @@ import math
 import cv2
 import numpy as np
 import ros_numpy
-from sensor_msgs.msg import Imu, Image
-from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import TwistStamped
+from sensor_msgs.msg import Imu, Image, NavSatFix
+from geometry_msgs.msg import TwistStamped, PoseStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
 
 CONMAND_FPS = 60
+ORI_LAT = 47.3977419  # 緯度
+ORI_LON = 8.5455936  # 經度
+ORI_ALT = 535.2399161  # 高度
+EARTH_R = 6371000  # 地球半徑(m)
 
 '''
 Ref：https://github.com/danielyugoodboy/NCRL-AIDrone-Platform/tree/master/src
@@ -52,6 +55,7 @@ class Multi_Drone_Enviroment():
         self.last_req = rospy.Time.now()
         self.current_state = State()
         self.current_pos = PoseStamped()
+        self.current_global_pos = np.array([0,0,0])
         self.current_img = Image()
         self.done = False
         self.observation = Drone_observation()
@@ -62,6 +66,7 @@ class Multi_Drone_Enviroment():
         # Set subscriber
         state_sub = rospy.Subscriber(self.name+"/mavros/state", State, callback = self.state_cb)
         local_pos_sub = rospy.Subscriber(self.name+"/mavros/local_position/pose", PoseStamped, callback = self.pos_cb)
+        gps_sub = rospy.Subscriber(self.name+"/mavros/global_position/global", NavSatFix, callback = self.gps_cb)
         #local_img_sub = rospy.Subscriber("/iris/usb_cam/image_raw", Image, callback = self.img_cb)
 
         # Set publisher
@@ -98,6 +103,19 @@ class Multi_Drone_Enviroment():
 
     def pos_cb(self, data):
         self.current_pos = data
+
+    def gps_cb(self, data):
+        raw_gps = data
+
+        diff_lat = raw_gps.latitude-ORI_LAT
+        diff_lon = raw_gps.longitude-ORI_LON
+        diff_alt = raw_gps.altitude-ORI_ALT
+
+        global_X = math.pi*(EARTH_R*math.cos(ORI_LAT*(math.pi/180)))*(diff_lon/180)
+        global_Y = math.pi*EARTH_R*(diff_lat/180)
+        global_Z = diff_alt
+
+        self.current_global_pos = np.array([global_X, global_Y, global_Z])
 
     def img_cb(self, data):
         image = ros_numpy.numpify(data).copy()
