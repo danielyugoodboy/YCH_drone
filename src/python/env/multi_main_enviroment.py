@@ -200,7 +200,7 @@ class Multi_Drone_Enviroment():
 
         # Done or not
         linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
-        if linear_distant >= 10:
+        if linear_distant >= 15:
             self.done = True
         
         # Info

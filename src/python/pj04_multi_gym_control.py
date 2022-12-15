@@ -27,22 +27,27 @@ class myAgent():
 
     def select_action_set(self,env_set, vir_drone, vir_drone_pos):
         # Movement design
-        print(vir_drone_pos)
-        #target_pos = vir_drone_pos + np.array([[0,0,0],[0,0,0.1]])
-        target_pos = np.array([[-3,-3,3],[0,0,0]])
+        command_X = 1.0
+        command_Y = 0
+        command_Z = 0
+        command_Yaw = 0.15
+        t_pos_x = math.cos(vir_drone_pos[1][2])*command_X - math.sin(vir_drone_pos[1][2])*command_Y
+        t_pos_y = math.sin(vir_drone_pos[1][2])*command_X + math.cos(vir_drone_pos[1][2])*command_Y
+
+        target_pos = vir_drone_pos + np.array([[t_pos_x,t_pos_y,command_Z],[0,0,command_Yaw]])
 
         # Calculate Error
+        formation = vir_drone.form_set[vir_drone.drone_num-1] 
         body_pos_set = vir_drone.cal_body_frame(target_pos, env_set)
-        
         error_set = []
         for i in range(len(body_pos_set)):
-            bC_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
-            bC_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
+            bC_x = formation[i][0][0] - body_pos_set[i][0][0]
+            bC_y = formation[i][0][1] - body_pos_set[i][0][1]
             # target point rotate (以無人機視角看目標點)
             C_x = math.cos(-body_pos_set[i][1][2])*bC_x - math.sin(-body_pos_set[i][1][2])*bC_y
             C_y = math.sin(-body_pos_set[i][1][2])*bC_x + math.cos(-body_pos_set[i][1][2])*bC_y
-            C_z = vir_drone.formation_1[i][0][2] - body_pos_set[i][0][2] 
-            C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
+            C_z = formation[i][0][2] - body_pos_set[i][0][2] 
+            C_yaw = normalize_angle(formation[i][1][2]-body_pos_set[i][1][2])
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
 
         # PID Controller
@@ -61,22 +66,26 @@ class myAgent():
 class Virtual_Drone():
     def __init__(self, drone_num):
         '''
-        1. 虛擬無人機為 golbal frame 此資料來自 所有實體無人機的型心在進行微調 
+        1. 虛擬無人機為 golbal frame 此資料來自 所有實體無人機的型心
         2. 虛擬無人機主要是以位置與姿態控制，而非速度控制，這樣比較好保持隊形整齊
         3. 也就是輸入值為虛擬無人機期望到達的位置與姿態
         4. 控制主要在body frame當中控制
-        5. 也就是回傳的值是body frame的僚機座標
-
-        formation_1:
-        X X 4 X X
-        X 2 X 3 X
-        X X 1 X X
+        5. 也就是回傳的值是僚機在虛擬無人機body frame的座標
+        6. 僚機有bodyframe的座標後，再進行速度控制(PID)
+        7. 編隊的型心一定的虛擬機的座標原點，也就是所有直相加等於零
         '''
         self.drone_num = drone_num
-        self.formation_1 = np.array([[[-2,0,0],[0,0,0]],
-                                     [[2,2,0],[0,0,0]],
-                                     [[2,-2,0],[0,0,0]],
-                                     [[2,0,0],[0,0,0]]])
+        form_1 = np.array([[[0,0,0],[0,0,0]]])
+        form_2 = np.array([[[0,2,0],[0,0,0]],
+                             [[0,-2,0],[0,0,0]]])
+        form_3 = np.array([[[-2,0,0],[0,0,0]],
+                             [[1,2,0],[0,0,0]],
+                             [[1,-2,0],[0,0,0]]])
+        form_4 = np.array([[[0,0,0],[0,0,0]],
+                             [[-2,0,0],[0,0,0]],
+                             [[1,2,0],[0,0,0]],
+                             [[1,-2,0],[0,0,0]]])
+        self.form_set = [form_1, form_2, form_3, form_4]
         self.error_sum_set = []
         self.error_past_set = []
         for i in range(drone_num):
@@ -117,8 +126,10 @@ class Virtual_Drone():
 
     def vel_PID_control(self, error_set, dt):
         control_input_set = []
-        kp_linear, ki_linear, kd_linear = 3.0, 0.5*(1.1**5), 0.15*(1.1**5)
+        kp_linear, ki_linear, kd_linear = 3.0, 0.5*(1.1**2), 0.1*(1.1**5)
         kp_rotate, ki_rotate, kd_rotate = 1.0, 0.0, 0.0
+        linear_limit = 20  # 20 m/s = 72km/hr
+        rotate_limit = math.pi/4  # rad/s
         for i in range(self.drone_num):
             # X-dir
             e_x = error_set[i][0][0]
@@ -128,7 +139,7 @@ class Virtual_Drone():
             e_x_past = self.error_past_set[i][0][0]
 
             input_X = kp_linear*e_x + ki_linear*e_x_sum + kd_linear*((e_x-e_x_past)/dt)
-            input_X = max(min(input_X,10),-10)
+            input_X = max(min(input_X,linear_limit),-linear_limit)
             self.error_past_set[i][0][0] = e_x
             
             # Y-dir
@@ -139,7 +150,7 @@ class Virtual_Drone():
             e_y_past = self.error_past_set[i][0][1]
             
             input_Y = kp_linear*e_y + ki_linear*e_y_sum + kd_linear*((e_y-e_y_past)/dt)
-            input_Y = max(min(input_Y,10),-10)
+            input_Y = max(min(input_Y,linear_limit),-linear_limit)
             self.error_past_set[i][0][1] = e_y
             
             # Z-dir
@@ -150,7 +161,7 @@ class Virtual_Drone():
             e_z_past = self.error_past_set[i][0][2]
             
             input_Z = kp_linear*e_z + ki_linear*e_z_sum + kd_linear*((e_z-e_z_past)/dt)
-            input_Z = max(min(input_Z,10),-10)
+            input_Z = max(min(input_Z,linear_limit),-linear_limit)
             self.error_past_set[i][0][2] = e_z
             
             # Yaw-dir
@@ -161,7 +172,7 @@ class Virtual_Drone():
             e_yaw_past = self.error_past_set[i][1][2]
             
             input_Yaw = kp_rotate*e_yaw + ki_rotate*e_yaw_sum + kd_rotate*((e_yaw-e_yaw_past)/dt)
-            input_Yaw = max(min(input_Yaw,2),-2)
+            input_Yaw = max(min(input_Yaw,rotate_limit),-rotate_limit)
             self.error_past_set[i][1][2] = e_yaw
 
             control_input_set.append(np.array([[input_X, input_Y, input_Z],[0,0,input_Yaw]]))
@@ -199,17 +210,29 @@ def reset_drone_set(env_set, vir_drone, init_position):
     # Go Fly
     while True:
         # Calculate Error
+        formation = vir_drone.form_set[vir_drone.drone_num-1] 
         body_pos_set = vir_drone.cal_body_frame(init_position, env_set)        
         condition_set = True
         error_set = []
+        linear_limit = 2.0  # m
         for i in range(num_env):
-            bC_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
-            bC_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
+            bC_x = formation[i][0][0] - body_pos_set[i][0][0]
+            bC_y = formation[i][0][1] - body_pos_set[i][0][1]
             # target point rotate (以無人機視角看目標點)
             C_x = math.cos(-body_pos_set[i][1][2])*bC_x - math.sin(-body_pos_set[i][1][2])*bC_y
             C_y = math.sin(-body_pos_set[i][1][2])*bC_x + math.cos(-body_pos_set[i][1][2])*bC_y
-            C_z = vir_drone.formation_1[i][0][2] - body_pos_set[i][0][2] 
-            C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
+            C_z = formation[i][0][2] - body_pos_set[i][0][2] 
+            C_yaw = normalize_angle(formation[i][1][2]-body_pos_set[i][1][2])
+
+            # error limit (防止震盪過大)
+            C_distant = (C_x**2+C_y**2+C_z**2)**0.5
+            if C_distant > linear_limit:
+                discont_rate = C_distant/linear_limit
+            else:
+                discont_rate = 1
+            C_x = C_x/discont_rate
+            C_y = C_y/discont_rate
+            C_z = C_z/discont_rate
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
             
             condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.05 and abs(C_yaw)< 0.035  # 2 degree
@@ -274,7 +297,7 @@ def main(args):
     agent = myAgent()
     
     for ep in range(1):
-        init_position = np.array([[-3,-3,3],[0,0,math.pi/4]])
+        init_position = np.array([[0,-7.5,3.0],[0,0,0*math.pi/4]])
         vir_drone_pos = reset_drone_set(env_set, vir_drone, init_position)
         agent.reset_time()
 

@@ -57,7 +57,7 @@
         <arg name="fcu_url" default="udp://:14541@localhost:14559"/>
         <!-- PX4 SITL and vehicle spawn -->
         <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
-            <arg name="x" value="2"/>
+            <arg name="x" value="1"/>
             <arg name="y" value="2"/>
             <arg name="z" value="0"/>
             <arg name="R" value="0"/>
@@ -84,7 +84,7 @@
         <arg name="fcu_url" default="udp://:14542@localhost:14561"/>
         <!-- PX4 SITL and vehicle spawn -->
         <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
-            <arg name="x" value="2"/>
+            <arg name="x" value="1"/>
             <arg name="y" value="-2"/>
             <arg name="z" value="0"/>
             <arg name="R" value="0"/>
