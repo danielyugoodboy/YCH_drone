@@ -42,7 +42,7 @@ class myAgent():
 # ************************* Design Agent Stop  ************************* #
 
 class Virtual_Drone():
-    def __init__(self):
+    def __init__(self, drone_num):
         '''
         1. 虛擬無人機為 golbal frame 此資料來自 所有實體無人機的型心在進行微調 
         2. 虛擬無人機主要是以位置與姿態控制，而非速度控制，這樣比較好保持隊形整齊
@@ -55,18 +55,26 @@ class Virtual_Drone():
         X 2 X 3 X
         X X 1 X X
         '''
+        self.drone_num = drone_num
         self.formation_1 = np.array([[[-2,0,0],[0,0,0]],
                                      [[2,2,0],[0,0,0]],
                                      [[2,-2,0],[0,0,0]],
                                      [[2,0,0],[0,0,0]]])
+        self.error_sum_set = []
+        self.error_past_set = []
+        for i in range(drone_num):
+            error_sum = np.array([[0,0,0],[0,0,0]])
+            error_past = np.array([[0,0,0],[0,0,0]])
+            self.error_sum_set.append(error_sum)
+            self.error_past_set.append(error_past)
 
     def cal_current_pos(self, env_set):
         drone_num = len(env_set)
         pos_X, pos_Y, pos_Z, pos_Yaw = 0,0,0,0
         for i in range(drone_num):
-            pos_X += env_set[i].observation.global_pose[0]
-            pos_Y += env_set[i].observation.global_pose[1]
-            pos_Z += env_set[i].observation.global_pose[2]
+            pos_X += env_set[i].current_global_pos[0]
+            pos_Y += env_set[i].current_global_pos[1]
+            pos_Z += env_set[i].current_global_pos[2]
             pos_Yaw += env_set[i].observation.local_pose[1][2]
         
         pos_Yaw = pos_Yaw*(180/math.pi)
@@ -80,11 +88,9 @@ class Virtual_Drone():
         global_yaw = tar_global_pos[1][2]
         body_pos_set = []
         for i in range(drone_num):
-            diff_pos = env_set[i].observation.global_pose-tar_global_pos[0]
-            diff_yaw = env_set[i].observation.local_pose[1][2]-tar_global_pos[1][2]
-            diff_yaw = (diff_yaw+2*math.pi)%(2*math.pi)
-            if diff_yaw > math.pi:
-                diff_yaw -= 2*math.pi
+            diff_pos = env_set[i].current_global_pos-tar_global_pos[0]
+            diff_yaw = env_set[i]._PoseStamped2np(env_set[i].current_pos)[1][2]-tar_global_pos[1][2]
+            diff_yaw = normalize_angle(diff_yaw)
 
             body_pos_x = math.cos(-global_yaw)*diff_pos[0] - math.sin(-global_yaw)*diff_pos[1]
             body_pos_y = math.sin(-global_yaw)*diff_pos[0] + math.cos(-global_yaw)*diff_pos[1]
@@ -93,12 +99,69 @@ class Virtual_Drone():
 
         return body_pos_set
 
-    def vel_PID_control(env_set, diff_pos_set):
-        pass
+    def vel_PID_control(self, error_set, dt):
+        control_input_set = []
+        kp_linear, ki_linear, kd_linear = 3.0, 0.0, 0.00*(1.1**2)
+        kp_rotate, ki_rotate, kd_rotate = 2.0, 0.0, 0.00
+        for i in range(self.drone_num):
+            # X-dir
+            e_x = error_set[i][0][0]
+
+            self.error_sum_set[i][0][0] += e_x*dt
+            e_x_sum = self.error_sum_set[i][0][0]
+            e_x_past = self.error_past_set[i][0][0]
+            
+            input_X = kp_linear*e_x + kp_linear*e_x_sum - kd_linear*((e_x-e_x_past)/dt)
+            input_X = max(min(input_X,10),-10)
+            self.error_past_set[i][0][0] = e_x
+            
+            # Y-dir
+            e_y = error_set[i][0][1]
+            
+            self.error_sum_set[i][0][1] += e_y*dt
+            e_y_sum = self.error_sum_set[i][0][1]
+            e_y_past = self.error_past_set[i][0][1]
+            
+            input_Y = kp_linear*e_y + kp_linear*e_y_sum - kd_linear*((e_y-e_y_past)/dt)
+            input_Y = max(min(input_Y,10),-10)
+            self.error_past_set[i][0][1] = e_y
+            
+            # Z-dir
+            e_z = error_set[i][0][2]
+            
+            self.error_sum_set[i][0][2] += e_z*dt
+            e_z_sum = self.error_sum_set[i][0][2]
+            e_z_past = self.error_past_set[i][0][2]
+            
+            input_Z = kp_linear*e_z + kp_linear*e_z_sum - kd_linear*((e_z-e_z_past)/dt)
+            input_Z = max(min(input_Z,10),-10)
+            self.error_past_set[i][0][2] = e_z
+            
+            # Yaw-dir
+            e_yaw = error_set[i][1][2]
+            
+            self.error_sum_set[i][1][2] += e_yaw*dt
+            e_yaw_sum = self.error_sum_set[i][1][2]
+            e_yaw_past = self.error_past_set[i][1][2]
+            
+            input_Yaw = kp_rotate*e_yaw + kp_rotate*e_yaw_sum - kd_rotate*((e_yaw-e_yaw_past)/dt)
+            input_Yaw = max(min(input_Yaw,2),-2)
+            self.error_past_set[i][1][2] = e_yaw
+
+            control_input_set.append(np.array([[input_X, input_Y, input_Z],[0,0,input_Yaw]]))
+        
+        return control_input_set
+    
+    def reset_PID_control(self):
+        for i in range(self.drone_num):
+            error_sum = np.array([[0,0,0],[0,0,0]])
+            error_past = np.array([[0,0,0],[0,0,0]])
+            self.error_sum_set[i] = error_sum
+            self.error_past_set[i] = error_past
+
 
 def reset_drone_set(env_set, vir_drone):
-    # 注意！ 每一台無人機都會默認自己的起始位置是座標原點[0,0,0]，並不是global frame!!
-    init_position = np.array([[0,0,2],[0,0,0]])
+    init_position = np.array([[2,2,3],[0,0,math.pi/4]])
     num_env = len(env_set)
 
     # If Ros is not shut down, pre publish 100 data first
@@ -119,29 +182,36 @@ def reset_drone_set(env_set, vir_drone):
     for i in range(num_env):
         env_set[i].setRosTime()
     while True:
-        '''
-        body_pos_set = vir_drone.cal_body_frame(init_position, env_set)
-        #print(vir_drone_pos)
-        '''
+        # Calculate Error
+        body_pos_set = vir_drone.cal_body_frame(init_position, env_set)        
         condition_set = True
+        error_set = []
         for i in range(num_env):
-            C_x = abs(env_set[i].current_pos.pose.position.x - init_position[0][0])
-            C_y = abs(env_set[i].current_pos.pose.position.y - init_position[0][1])
-            C_z = abs(env_set[i].current_pos.pose.position.z - init_position[0][2])
-            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.15
+            C_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
+            C_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
+            C_z = vir_drone.formation_1[i][0][2] - body_pos_set[i][0][2] 
+            C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
+            error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
+            
+            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.15 and abs(C_yaw)< 0.087  # 5 degree
             condition_set = condition_set and condition
-
+        
+        # PID Controller
+        current_time = time.time()
+        dt = current_time-init_time
         if condition_set:
             print("[State] : Initialize Done")
+            vir_drone.reset_PID_control
             break
         else:
+            control_input_set = vir_drone.vel_PID_control(error_set, dt)
             for i in range(num_env):
-                env_set[i].position_step(init_position)
+                env_set[i].velocity_step(control_input_set[i])
 
-        current_time = time.time()
-        print("Waiting Reset... / FPS : " + "{:.1f}".format(1/(current_time-init_time)), end='\r')
+        print("Waiting Reset... / FPS : " + "{:.1f}".format(1/(dt)), end='\r')
         init_time = current_time
     
+    # Record Observation
     observation_set = []
     for i in range(num_env):
         env_set[i].done = False
@@ -150,7 +220,6 @@ def reset_drone_set(env_set, vir_drone):
         observation_set.append(env_set[i].observation)
 
     print("[State] : Reset Done")
-
     return observation_set
 
 def velocity_step_set(env_set, action_set):     
@@ -167,6 +236,12 @@ def shotdown_set(env_set):
     for i in range(len(env_set)):
         env_set[i].shotdown()
 
+def normalize_angle(angle):
+    angle = (angle+2*math.pi)%(2*math.pi)
+    if angle > math.pi:
+        angle -= 2*math.pi
+    return angle
+
 def main(args):
     env_set = []
     for i in range(args.drone_num):
@@ -174,10 +249,10 @@ def main(args):
         env = ENV("/uav"+str(i+1))
         env_set.append(env)
 
+    vir_drone = Virtual_Drone(args.drone_num)
     agent = myAgent()
-    vir_drone = Virtual_Drone()
     
-    for ep in range(2):
+    for ep in range(1):
         observation_set = reset_drone_set(env_set, vir_drone)
 
         print("Start Episode : {}".format(ep+1))
