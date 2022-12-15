@@ -26,7 +26,7 @@ class myAgent():
         pass
 
     def select_action_set(self,obs_set):
-        x_dir = 2.5
+        x_dir = 5
         y_dir = 0
         z_dir = 0
         pitch = 0
@@ -110,9 +110,6 @@ class Virtual_Drone():
             self.error_sum_set[i][0][0] = self.error_sum_set[i][0][0]+ e_x*dt
             e_x_sum = self.error_sum_set[i][0][0]
             e_x_past = self.error_past_set[i][0][0]
-            
-            if i ==1:
-                print(e_x_sum)
 
             input_X = kp_linear*e_x + ki_linear*e_x_sum + kd_linear*((e_x-e_x_past)/dt)
             input_X = max(min(input_X,10),-10)
@@ -147,7 +144,7 @@ class Virtual_Drone():
             e_yaw_sum = self.error_sum_set[i][1][2]
             e_yaw_past = self.error_past_set[i][1][2]
             
-            input_Yaw = kp_rotate*e_yaw + kp_rotate*e_yaw_sum + kd_rotate*((e_yaw-e_yaw_past)/dt)
+            input_Yaw = kp_rotate*e_yaw + ki_rotate*e_yaw_sum + kd_rotate*((e_yaw-e_yaw_past)/dt)
             input_Yaw = max(min(input_Yaw,2),-2)
             self.error_past_set[i][1][2] = e_yaw
 
@@ -163,8 +160,7 @@ class Virtual_Drone():
             self.error_past_set[i] = error_past
 
 
-def reset_drone_set(env_set, vir_drone):
-    init_position = np.array([[-3,-3,3],[0,0,0]])
+def reset_drone_set(env_set, vir_drone, init_position):
     num_env = len(env_set)
 
     # If Ros is not shut down, pre publish 100 data first
@@ -184,14 +180,21 @@ def reset_drone_set(env_set, vir_drone):
     init_time = time.time()
     for i in range(num_env):
         env_set[i].setRosTime()
+
+    # Go Fly
     while True:
         # Calculate Error
         body_pos_set = vir_drone.cal_body_frame(init_position, env_set)        
         condition_set = True
         error_set = []
         for i in range(num_env):
-            C_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
-            C_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
+            bC_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
+            bC_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
+
+            # target point rotate (以無人機視角看目標點)
+            C_x = math.cos(-body_pos_set[i][1][2])*bC_x - math.sin(-body_pos_set[i][1][2])*bC_y
+            C_y = math.sin(-body_pos_set[i][1][2])*bC_x + math.cos(-body_pos_set[i][1][2])*bC_y
+
             C_z = vir_drone.formation_1[i][0][2] - body_pos_set[i][0][2] 
             C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
@@ -256,7 +259,8 @@ def main(args):
     agent = myAgent()
     
     for ep in range(1):
-        observation_set = reset_drone_set(env_set, vir_drone)
+        init_position = np.array([[-5,-5,3],[0,0,1*(math.pi/4)]])
+        observation_set = reset_drone_set(env_set, vir_drone, init_position)
 
         print("Start Episode : {}".format(ep+1))
         while True: 
@@ -274,7 +278,8 @@ def main(args):
             if done_set:
                 break
     
-    reset_drone_set(env_set, vir_drone)
+    final_position = np.array([[0,0,1.0],[0,0,0]])
+    reset_drone_set(env_set, vir_drone, final_position)
     shotdown_set(env_set)
 
 if __name__ == "__main__":
