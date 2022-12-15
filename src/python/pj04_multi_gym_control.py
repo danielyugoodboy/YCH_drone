@@ -43,8 +43,13 @@ class myAgent():
 
 class Virtual_Drone():
     def __init__(self):
-        self.global_position = np.array([[0,0,0],[0,0,0]])
         '''
+        1. 虛擬無人機為 golbal frame 此資料來自 所有實體無人機的型心在進行微調 
+        2. 虛擬無人機主要是以位置與姿態控制，而非速度控制，這樣比較好保持隊形整齊
+        3. 也就是輸入值為虛擬無人機期望到達的位置與姿態
+        4. 控制主要在body frame當中控制
+        5. 也就是回傳的值是body frame的僚機座標
+
         formation_1:
         X X 4 X X
         X 2 X 3 X
@@ -66,17 +71,32 @@ class Virtual_Drone():
         
         pos_Yaw = pos_Yaw*(180/math.pi)
 
-        self.global_position = np.array([[pos_X,pos_Y,pos_Z],[0,0,pos_Yaw]])/drone_num
+        global_pos = np.array([[pos_X,pos_Y,pos_Z],[0,0,pos_Yaw]])/drone_num
 
-        return self.global_position
+        return global_pos
 
-    def cal_body_frame(self, vir_drone_pos, env_set):
+    def cal_body_frame(self, tar_global_pos, env_set):
         drone_num = len(env_set)
+        global_yaw = tar_global_pos[1][2]
+        body_pos_set = []
         for i in range(drone_num):
-            diff_pos = env_set[i]-vir_drone_pos
+            diff_pos = env_set[i].observation.global_pose-tar_global_pos[0]
+            diff_yaw = env_set[i].observation.local_pose[1][2]-tar_global_pos[1][2]
+            diff_yaw = (diff_yaw+2*math.pi)%(2*math.pi)
+            if diff_yaw > math.pi:
+                diff_yaw -= 2*math.pi
 
+            body_pos_x = math.cos(-global_yaw)*diff_pos[0] - math.sin(-global_yaw)*diff_pos[1]
+            body_pos_y = math.sin(-global_yaw)*diff_pos[0] + math.cos(-global_yaw)*diff_pos[1]
+            body_pos = np.array([[body_pos_x, body_pos_y, diff_pos[2]],[0,0,diff_yaw]])
+            body_pos_set.append(body_pos)
 
-def reset_drone_set(env_set):
+        return body_pos_set
+
+    def vel_PID_control(env_set, diff_pos_set):
+        pass
+
+def reset_drone_set(env_set, vir_drone):
     # 注意！ 每一台無人機都會默認自己的起始位置是座標原點[0,0,0]，並不是global frame!!
     init_position = np.array([[0,0,2],[0,0,0]])
     num_env = len(env_set)
@@ -99,12 +119,16 @@ def reset_drone_set(env_set):
     for i in range(num_env):
         env_set[i].setRosTime()
     while True:
+        '''
+        body_pos_set = vir_drone.cal_body_frame(init_position, env_set)
+        #print(vir_drone_pos)
+        '''
         condition_set = True
         for i in range(num_env):
             C_x = abs(env_set[i].current_pos.pose.position.x - init_position[0][0])
             C_y = abs(env_set[i].current_pos.pose.position.y - init_position[0][1])
             C_z = abs(env_set[i].current_pos.pose.position.z - init_position[0][2])
-            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.1
+            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.15
             condition_set = condition_set and condition
 
         if condition_set:
@@ -143,9 +167,6 @@ def shotdown_set(env_set):
     for i in range(len(env_set)):
         env_set[i].shotdown()
 
-def vel_PID_control(env_set, diff_pos_set):
-    pass
-
 def main(args):
     env_set = []
     for i in range(args.drone_num):
@@ -157,25 +178,17 @@ def main(args):
     vir_drone = Virtual_Drone()
     
     for ep in range(2):
-        observation_set = reset_drone_set(env_set)
+        observation_set = reset_drone_set(env_set, vir_drone)
 
         print("Start Episode : {}".format(ep+1))
-        while True:
-            #**************** Virtual Drone Design ****************#
+        while True: 
             '''
-            1. 虛擬無人機為 golbal frame 此資料來自 所有實體無人機的型心在進行微調 
-            2. 虛擬無人機主要是以位置與姿態控制，而非速度控制，這樣比較好保持隊形整齊
-            3. 也就是輸入值為虛擬無人機期望到達的位置與姿態
-            4. 控制主要在body frame當中控制
-            5. 也就是回傳的值是body frame的僚機座標
-            '''
+            command_input = np.array([[0,0,0],[0,0,0]])
             vir_drone_pos = vir_drone.cal_current_pos(env_set)
-            print(vir_drone_pos)
-
-
-
-
-            #******************************************************#  
+            tar_vir_drone_pos = vir_drone_pos+command_input
+            body_pos_set = vir_drone.cal_body_frame(tar_vir_drone_pos, env_set)
+            #print(vir_drone_pos)
+            '''
             action_set = agent.select_action_set(observation_set)
             next_observation_set, done_set = velocity_step_set(env_set, action_set)
             observation_set = next_observation_set
@@ -183,7 +196,7 @@ def main(args):
             if done_set:
                 break
     
-    reset_drone_set(env_set)
+    reset_drone_set(env_set, vir_drone)
     shotdown_set(env_set)
 
 if __name__ == "__main__":
