@@ -101,13 +101,13 @@ class Virtual_Drone():
 
     def vel_PID_control(self, error_set, dt):
         control_input_set = []
-        kp_linear, ki_linear, kd_linear = 3.0, 0.0, 0.0
+        kp_linear, ki_linear, kd_linear = 3.0, 0.5*(1.1**5), 0.15*(1.1**5)
         kp_rotate, ki_rotate, kd_rotate = 1.0, 0.0, 0.0
         for i in range(self.drone_num):
             # X-dir
             e_x = error_set[i][0][0]
 
-            self.error_sum_set[i][0][0] = self.error_sum_set[i][0][0]+ e_x*dt
+            self.error_sum_set[i][0][0] = self.error_sum_set[i][0][0]*0.9 + e_x*dt
             e_x_sum = self.error_sum_set[i][0][0]
             e_x_past = self.error_past_set[i][0][0]
 
@@ -118,7 +118,7 @@ class Virtual_Drone():
             # Y-dir
             e_y = error_set[i][0][1]
             
-            self.error_sum_set[i][0][1] += e_y*dt
+            self.error_sum_set[i][0][1] = self.error_sum_set[i][0][1]*0.9 + e_y*dt
             e_y_sum = self.error_sum_set[i][0][1]
             e_y_past = self.error_past_set[i][0][1]
             
@@ -129,7 +129,7 @@ class Virtual_Drone():
             # Z-dir
             e_z = error_set[i][0][2]
             
-            self.error_sum_set[i][0][2] += e_z*dt
+            self.error_sum_set[i][0][2] = self.error_sum_set[i][0][2]*0.9 + e_z*dt
             e_z_sum = self.error_sum_set[i][0][2]
             e_z_past = self.error_past_set[i][0][2]
             
@@ -140,7 +140,7 @@ class Virtual_Drone():
             # Yaw-dir
             e_yaw = error_set[i][1][2]
             
-            self.error_sum_set[i][1][2] += e_yaw*dt
+            self.error_sum_set[i][1][2] = self.error_sum_set[i][1][2]*0.9 + e_yaw*dt
             e_yaw_sum = self.error_sum_set[i][1][2]
             e_yaw_past = self.error_past_set[i][1][2]
             
@@ -158,7 +158,6 @@ class Virtual_Drone():
             error_past = np.array([[0.,0.,0.],[0.,0.,0.]])
             self.error_sum_set[i] = error_sum
             self.error_past_set[i] = error_past
-
 
 def reset_drone_set(env_set, vir_drone, init_position):
     num_env = len(env_set)
@@ -259,7 +258,7 @@ def main(args):
     agent = myAgent()
     
     for ep in range(1):
-        init_position = np.array([[-5,-5,3],[0,0,1*(math.pi/4)]])
+        init_position = np.array([[-5,-5,3],[0,0,3*(math.pi/4)]])
         observation_set = reset_drone_set(env_set, vir_drone, init_position)
 
         print("Start Episode : {}".format(ep+1))
