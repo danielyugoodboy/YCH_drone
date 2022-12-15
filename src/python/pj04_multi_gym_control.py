@@ -63,8 +63,8 @@ class Virtual_Drone():
         self.error_sum_set = []
         self.error_past_set = []
         for i in range(drone_num):
-            error_sum = np.array([[0,0,0],[0,0,0]])
-            error_past = np.array([[0,0,0],[0,0,0]])
+            error_sum = np.array([[0.,0.,0.],[0.,0.,0.]])
+            error_past = np.array([[0.,0.,0.],[0.,0.,0.]])
             self.error_sum_set.append(error_sum)
             self.error_past_set.append(error_past)
 
@@ -101,17 +101,20 @@ class Virtual_Drone():
 
     def vel_PID_control(self, error_set, dt):
         control_input_set = []
-        kp_linear, ki_linear, kd_linear = 3.0, 0.0, 0.00*(1.1**2)
-        kp_rotate, ki_rotate, kd_rotate = 2.0, 0.0, 0.00
+        kp_linear, ki_linear, kd_linear = 3.0, 0.0, 0.0
+        kp_rotate, ki_rotate, kd_rotate = 1.0, 0.0, 0.0
         for i in range(self.drone_num):
             # X-dir
             e_x = error_set[i][0][0]
 
-            self.error_sum_set[i][0][0] += e_x*dt
+            self.error_sum_set[i][0][0] = self.error_sum_set[i][0][0]+ e_x*dt
             e_x_sum = self.error_sum_set[i][0][0]
             e_x_past = self.error_past_set[i][0][0]
             
-            input_X = kp_linear*e_x + kp_linear*e_x_sum - kd_linear*((e_x-e_x_past)/dt)
+            if i ==1:
+                print(e_x_sum)
+
+            input_X = kp_linear*e_x + ki_linear*e_x_sum + kd_linear*((e_x-e_x_past)/dt)
             input_X = max(min(input_X,10),-10)
             self.error_past_set[i][0][0] = e_x
             
@@ -122,7 +125,7 @@ class Virtual_Drone():
             e_y_sum = self.error_sum_set[i][0][1]
             e_y_past = self.error_past_set[i][0][1]
             
-            input_Y = kp_linear*e_y + kp_linear*e_y_sum - kd_linear*((e_y-e_y_past)/dt)
+            input_Y = kp_linear*e_y + ki_linear*e_y_sum + kd_linear*((e_y-e_y_past)/dt)
             input_Y = max(min(input_Y,10),-10)
             self.error_past_set[i][0][1] = e_y
             
@@ -133,7 +136,7 @@ class Virtual_Drone():
             e_z_sum = self.error_sum_set[i][0][2]
             e_z_past = self.error_past_set[i][0][2]
             
-            input_Z = kp_linear*e_z + kp_linear*e_z_sum - kd_linear*((e_z-e_z_past)/dt)
+            input_Z = kp_linear*e_z + ki_linear*e_z_sum + kd_linear*((e_z-e_z_past)/dt)
             input_Z = max(min(input_Z,10),-10)
             self.error_past_set[i][0][2] = e_z
             
@@ -144,7 +147,7 @@ class Virtual_Drone():
             e_yaw_sum = self.error_sum_set[i][1][2]
             e_yaw_past = self.error_past_set[i][1][2]
             
-            input_Yaw = kp_rotate*e_yaw + kp_rotate*e_yaw_sum - kd_rotate*((e_yaw-e_yaw_past)/dt)
+            input_Yaw = kp_rotate*e_yaw + kp_rotate*e_yaw_sum + kd_rotate*((e_yaw-e_yaw_past)/dt)
             input_Yaw = max(min(input_Yaw,2),-2)
             self.error_past_set[i][1][2] = e_yaw
 
@@ -154,14 +157,14 @@ class Virtual_Drone():
     
     def reset_PID_control(self):
         for i in range(self.drone_num):
-            error_sum = np.array([[0,0,0],[0,0,0]])
-            error_past = np.array([[0,0,0],[0,0,0]])
+            error_sum = np.array([[0.,0.,0.],[0.,0.,0.]])
+            error_past = np.array([[0.,0.,0.],[0.,0.,0.]])
             self.error_sum_set[i] = error_sum
             self.error_past_set[i] = error_past
 
 
 def reset_drone_set(env_set, vir_drone):
-    init_position = np.array([[2,2,3],[0,0,math.pi/4]])
+    init_position = np.array([[-3,-3,3],[0,0,0]])
     num_env = len(env_set)
 
     # If Ros is not shut down, pre publish 100 data first
@@ -193,7 +196,7 @@ def reset_drone_set(env_set, vir_drone):
             C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
             
-            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.15 and abs(C_yaw)< 0.087  # 5 degree
+            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.05 and abs(C_yaw)< 0.035  # 2 degree
             condition_set = condition_set and condition
         
         # PID Controller
