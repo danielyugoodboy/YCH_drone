@@ -23,21 +23,38 @@ To add a third iris to this simulation there are two main components to consider
 # ************************* Design Agent Start ************************* #
 class myAgent():
     def __init__(self):
-        pass
+        self.init_time = time.time()
 
-    def select_action_set(self,obs_set):
-        x_dir = 5
-        y_dir = 0
-        z_dir = 0
-        pitch = 0
-        row = 0
-        yaw = 0
+    def select_action_set(self,env_set, vir_drone, vir_drone_pos):
+        # Movement design
+        print(vir_drone_pos)
+        #target_pos = vir_drone_pos + np.array([[0,0,0],[0,0,0.1]])
+        target_pos = np.array([[-3,-3,3],[0,0,0]])
 
-        action_set = []
-        for i in range(len(obs_set)):
-            action = np.array([[x_dir, y_dir, z_dir], [pitch, row, yaw]])
-            action_set.append(action)
-        return action_set
+        # Calculate Error
+        body_pos_set = vir_drone.cal_body_frame(target_pos, env_set)
+        
+        error_set = []
+        for i in range(len(body_pos_set)):
+            bC_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
+            bC_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
+            # target point rotate (以無人機視角看目標點)
+            C_x = math.cos(-body_pos_set[i][1][2])*bC_x - math.sin(-body_pos_set[i][1][2])*bC_y
+            C_y = math.sin(-body_pos_set[i][1][2])*bC_x + math.cos(-body_pos_set[i][1][2])*bC_y
+            C_z = vir_drone.formation_1[i][0][2] - body_pos_set[i][0][2] 
+            C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
+            error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
+
+        # PID Controller
+        current_time = time.time()
+        dt = current_time-self.init_time
+        control_input_set = vir_drone.vel_PID_control(error_set, dt)
+        self.init_time = current_time
+
+        return control_input_set
+
+    def reset_time(self):
+        self.init_time = time.time()
 
 # ************************* Design Agent Stop  ************************* #
 
@@ -77,9 +94,8 @@ class Virtual_Drone():
             pos_Z += env_set[i].current_global_pos[2]
             pos_Yaw += env_set[i].observation.local_pose[1][2]
         
-        pos_Yaw = pos_Yaw*(180/math.pi)
-
-        global_pos = np.array([[pos_X,pos_Y,pos_Z],[0,0,pos_Yaw]])/drone_num
+        pos_Yaw = normalize_angle(pos_Yaw/drone_num)
+        global_pos = np.array([[pos_X/drone_num, pos_Y/drone_num, pos_Z/drone_num],[0,0,pos_Yaw]])
 
         return global_pos
 
@@ -189,11 +205,9 @@ def reset_drone_set(env_set, vir_drone, init_position):
         for i in range(num_env):
             bC_x = vir_drone.formation_1[i][0][0] - body_pos_set[i][0][0]
             bC_y = vir_drone.formation_1[i][0][1] - body_pos_set[i][0][1]
-
             # target point rotate (以無人機視角看目標點)
             C_x = math.cos(-body_pos_set[i][1][2])*bC_x - math.sin(-body_pos_set[i][1][2])*bC_y
             C_y = math.sin(-body_pos_set[i][1][2])*bC_x + math.cos(-body_pos_set[i][1][2])*bC_y
-
             C_z = vir_drone.formation_1[i][0][2] - body_pos_set[i][0][2] 
             C_yaw = normalize_angle(vir_drone.formation_1[i][1][2]-body_pos_set[i][1][2])
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
@@ -223,19 +237,21 @@ def reset_drone_set(env_set, vir_drone, init_position):
         env_set[i].observation.local_pose = env_set[i]._PoseStamped2np(env_set[i].current_pos)
         env_set[i].observation.img = env_set[i].current_img
         observation_set.append(env_set[i].observation)
+    
 
+    vir_drone_pos = vir_drone.cal_current_pos(env_set)
     print("[State] : Reset Done")
-    return observation_set
+    return vir_drone_pos
 
-def velocity_step_set(env_set, action_set):     
+def velocity_step_set(env_set, vir_drone, action_set):     
         next_observation_set = []
         done_set = True
         for i in range(len(env_set)):
             next_observation, reward, done, info = env_set[i].velocity_step(action_set[i])
             next_observation_set.append(next_observation)
             done_set = done_set and done
-
-        return next_observation_set, done_set
+        next_vir_drone_pos = vir_drone.cal_current_pos(env_set)
+        return next_vir_drone_pos, done_set
 
 def shotdown_set(env_set):
     for i in range(len(env_set)):
@@ -258,21 +274,15 @@ def main(args):
     agent = myAgent()
     
     for ep in range(1):
-        init_position = np.array([[-5,-5,3],[0,0,3*(math.pi/4)]])
-        observation_set = reset_drone_set(env_set, vir_drone, init_position)
+        init_position = np.array([[-3,-3,3],[0,0,math.pi/4]])
+        vir_drone_pos = reset_drone_set(env_set, vir_drone, init_position)
+        agent.reset_time()
 
         print("Start Episode : {}".format(ep+1))
         while True: 
-            '''
-            command_input = np.array([[0,0,0],[0,0,0]])
-            vir_drone_pos = vir_drone.cal_current_pos(env_set)
-            tar_vir_drone_pos = vir_drone_pos+command_input
-            body_pos_set = vir_drone.cal_body_frame(tar_vir_drone_pos, env_set)
-            #print(vir_drone_pos)
-            '''
-            action_set = agent.select_action_set(observation_set)
-            next_observation_set, done_set = velocity_step_set(env_set, action_set)
-            observation_set = next_observation_set
+            action_set = agent.select_action_set(env_set, vir_drone, vir_drone_pos)
+            next_vir_drone_pos, done_set = velocity_step_set(env_set, vir_drone, action_set)
+            vir_drone_pos = next_vir_drone_pos
             
             if done_set:
                 break
