@@ -60,8 +60,9 @@ class Multi_Drone_Enviroment():
         # Initial parameter setup
         self.last_req = rospy.Time.now()
         self.current_state = State()
-        self.current_pos = PoseStamped()
-        self.current_global_pos = np.array([0,0,0])
+        self.current_pos = PoseStamped()  # For orientation & height
+        self.altitude = 0.0
+        self.current_global_pos = np.array([0,0,0])  # For position
         self.current_img = Image()
         self.done = False
         self.observation = Drone_observation()
@@ -109,17 +110,17 @@ class Multi_Drone_Enviroment():
 
     def pos_cb(self, data):
         self.current_pos = data
+        self.altitude = data.pose.position.z
 
     def gps_cb(self, data):
         raw_gps = data
 
         diff_lat = raw_gps.latitude-ORI_LAT
         diff_lon = raw_gps.longitude-ORI_LON
-        diff_alt = raw_gps.altitude-ORI_ALT
 
         global_X = math.pi*(EARTH_R*math.cos(ORI_LAT*(math.pi/180)))*(diff_lon/180)
         global_Y = math.pi*EARTH_R*(diff_lat/180)
-        global_Z = diff_alt
+        global_Z = self.altitude
 
         self.current_global_pos = np.array([global_X, global_Y, global_Z])
 

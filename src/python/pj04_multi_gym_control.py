@@ -236,7 +236,7 @@ def reset_drone_set(env_set, vir_drone, init_position):
             C_z = C_z/discont_rate
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
             
-            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.1 and abs(C_yaw)< 0.035  # 2 degree
+            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.05 and abs(C_yaw)< 0.035  # 2 degree
             condition_set = condition_set and condition
         
         # PID Controller
