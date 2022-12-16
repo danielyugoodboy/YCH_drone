@@ -103,4 +103,32 @@
             <arg name="tgt_component" value="1"/>
         </include>
     </group>
+
+    <!-- UAV4 -->
+    <group ns="uav4">
+        <!-- MAVROS and vehicle configs -->        
+        <arg name="ID" value="4"/>
+        <arg name="fcu_url" default="udp://:14543@localhost:14563"/>
+        <!-- PX4 SITL and vehicle spawn -->
+        <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
+            <arg name="x" value="0"/>
+            <arg name="y" value="0"/>
+            <arg name="z" value="0"/>
+            <arg name="R" value="0"/>
+            <arg name="P" value="0"/>
+            <arg name="Y" value="0"/>
+            <arg name="vehicle" value="$(arg vehicle)"/>
+            <arg name="rcS" value="$(find YCH_drone)/drone/$(arg est)/$(arg vehicle)_$(arg ID)"/>
+            <arg name="mavlink_udp_port" value="14566"/>
+            <arg name="ID" value="$(arg ID)"/>
+        </include>
+        <!-- MAVROS -->
+        <include file="$(find mavros)/launch/px4.launch">
+            <arg name="fcu_url" value="$(arg fcu_url)"/>
+            <arg name="gcs_url" value=""/>
+            <arg name="tgt_system" value="$(arg ID)"/>
+            <arg name="tgt_component" value="1"/>
+        </include>
+    </group>
+
 </launch>

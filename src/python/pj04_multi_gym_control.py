@@ -7,17 +7,18 @@ from env.multi_main_enviroment import Multi_Drone_Enviroment as ENV
 '''
 To add a third iris to this simulation there are two main components to consider:
 
-* 把UAV3 添加到multi_uav_mavros_sitl.launch
-    *复制已经存在的四旋翼(UAV1 或者 UAV2)
-    * 把 ID 改为 3
-    * 与gazebo的通信，选择一个不同的 mavlink_udp_port端口
-    * MAVROS通信端口选择是通过在fcu_url 中修改两个端口号。
-* 创建一个开始文件，并按照如下方式修改：
-    * 复制已存在的iris rcs启动文件，(iris_1 或 iris_2) ，重命名为iris_3
-    * MAV_SYS_ID 值改为3
-    * SITL_UDP_PRT 的值与 mavlink_udp_port相一致。
-    * 第一个mavlink start 端口和mavlink stream端口值设置为相同值，用于和QGC通信。
-    * 第二个mavlink start 端口值应与启动文件 fcu_url 中的值一致。
+* Step_1. Add UAV3 to "/YCH_drone/launch/uav_mavros_sitl_multiDrone.launch"
+    * Copy an existing quadcopter (UAV1 or UAV2)
+    * Change ID to '3'
+    * Change 2 different port of "fcu_url"  (Link mavros)
+    * Change a different "mavlink_udp_port"  (Link Gazebo)
+
+* Step_2. Create a start file in "/YCH_drone/drone/ekf2/iris_3"
+    * Copy the existing iris rcs startup file, (iris_1 or iris_2), rename it to iris_3
+    * Change "MAV_SYS_ID" to '3'
+    * Change "SITL_UDP_PRT" is same as "mavlink_udp_port".
+    * 1_st port of "mavlink start" is same as "mavlink stream"  (for QGC)
+    * 2_nd port of "mavlink start" is same as 2_nd port of "fcu_url"
 '''
 
 # ************************* Design Agent Start ************************* #
@@ -27,7 +28,7 @@ class myAgent():
 
     def select_action_set(self,env_set, vir_drone, vir_drone_pos):
         # Movement design
-        command_X = 1.0
+        command_X = 0.75
         command_Y = 0
         command_Z = 0
         command_Yaw = 0.15
@@ -81,10 +82,10 @@ class Virtual_Drone():
         form_3 = np.array([[[-2,0,0],[0,0,0]],
                              [[1,2,0],[0,0,0]],
                              [[1,-2,0],[0,0,0]]])
-        form_4 = np.array([[[0,0,0],[0,0,0]],
-                             [[-2,0,0],[0,0,0]],
-                             [[1,2,0],[0,0,0]],
-                             [[1,-2,0],[0,0,0]]])
+        form_4 = np.array([[[-2,0,0],[0,0,0]],
+                            [[1,2,0],[0,0,0]],
+                            [[1,-2,0],[0,0,0]],
+                            [[0,0,0],[0,0,0]]])
         self.form_set = [form_1, form_2, form_3, form_4]
         self.error_sum_set = []
         self.error_past_set = []
@@ -235,7 +236,7 @@ def reset_drone_set(env_set, vir_drone, init_position):
             C_z = C_z/discont_rate
             error_set.append(np.array([[C_x, C_y, C_z], [0,0,C_yaw]]))
             
-            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.05 and abs(C_yaw)< 0.035  # 2 degree
+            condition = (C_x**2+C_y**2+C_z**2)**0.5 < 0.1 and abs(C_yaw)< 0.035  # 2 degree
             condition_set = condition_set and condition
         
         # PID Controller
@@ -297,7 +298,7 @@ def main(args):
     agent = myAgent()
     
     for ep in range(1):
-        init_position = np.array([[0,-7.5,3.0],[0,0,0*math.pi/4]])
+        init_position = np.array([[-6,-6,3.0],[0,0,0*math.pi/4]])
         vir_drone_pos = reset_drone_set(env_set, vir_drone, init_position)
         agent.reset_time()
 
