@@ -99,7 +99,7 @@ class TK_KeyBoardThread(threading.Thread):
         win.title("KeyBoard Controller")
         win.geometry("640x360")
 
-        img = Image.open('img/controler_640x360.jpg')
+        img = Image.open('img/controller_640x360.jpg')
         tk_img = ImageTk.PhotoImage(img)
         label = tkinter.Label(win, image=tk_img, width=640, height=360)
         label.pack()
