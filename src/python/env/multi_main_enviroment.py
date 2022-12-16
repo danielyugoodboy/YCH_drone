@@ -7,13 +7,16 @@ import math
 import cv2
 import numpy as np
 import ros_numpy
-from sensor_msgs.msg import Imu, Image
-from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import TwistStamped
+from sensor_msgs.msg import Imu, Image, NavSatFix
+from geometry_msgs.msg import TwistStamped, PoseStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, CommandBoolRequest, SetMode, SetModeRequest
 
 CONMAND_FPS = 60
+ORI_LAT = 47.3977419  # 緯度
+ORI_LON = 8.5455936  # 經度
+ORI_ALT = 535.2399161  # 高度
+EARTH_R = 6371000  # 地球半徑(m)
 
 '''
 Ref：https://github.com/danielyugoodboy/NCRL-AIDrone-Platform/tree/master/src
@@ -25,25 +28,31 @@ MAVROS_Tutorial: https://masoudir.github.io/mavros_tutorial/
 class Drone_observation():
     def __init__(self):
         '''
-        1. action :
+        0. action :
         numpy array
         shape = (2, 3)
-        np.array([x,y,z],[pitch, roll, yaw])
+        np.array([[x,y,z],[pitch, roll, yaw]])
 
-        2. observation.pose :
+        1. observation.local_pose :
         numpy array
         shape = (2, 3)
-        np.array([x,y,z],[pitch, roll, yaw])
+        np.array([[x,y,z],[pitch, roll, yaw]])
+
+        2. observation.global_pose :
+        numpy array
+        shape = (3,)
+        np.array([x,y,z])
 
         3. observation.img :
         numpy array
         shape = (240, 320, 3)
         '''
-        self.pose = None
+        self.local_pose = None
+        self.global_pose = None
         self.img = None
 
-class Drone_Enviroment():
-    def __init__(self):
+class Multi_Drone_Enviroment():
+    def __init__(self, drone_name=""):
         print("[State] : Start Drone Enviroment")
         rospy.init_node("main_enviroemnt")
 
@@ -52,29 +61,32 @@ class Drone_Enviroment():
         self.last_req = rospy.Time.now()
         self.current_state = State()
         self.current_pos = PoseStamped()
+        self.current_global_pos = np.array([0,0,0])
         self.current_img = Image()
         self.done = False
         self.observation = Drone_observation()
+        self.name = drone_name
 
         # ************************* PX4 SETTING ************************* #
 
         # Set subscriber
-        state_sub = rospy.Subscriber("/mavros/state", State, callback = self.state_cb)
-        local_pos_sub = rospy.Subscriber("/mavros/local_position/pose", PoseStamped, callback = self.pos_cb)
-        local_img_sub = rospy.Subscriber("/iris/usb_cam/image_raw", Image, callback = self.img_cb)
+        state_sub = rospy.Subscriber(self.name+"/mavros/state", State, callback = self.state_cb)
+        local_pos_sub = rospy.Subscriber(self.name+"/mavros/local_position/pose", PoseStamped, callback = self.pos_cb)
+        gps_sub = rospy.Subscriber(self.name+"/mavros/global_position/global", NavSatFix, callback = self.gps_cb)
+        #local_img_sub = rospy.Subscriber("/iris/usb_cam/image_raw", Image, callback = self.img_cb)
 
         # Set publisher
-        self.local_pos_pub = rospy.Publisher("/mavros/setpoint_position/local", PoseStamped, queue_size=10)
-        self.setpoint_velocity_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel",TwistStamped, queue_size = 10)
+        self.local_pos_pub = rospy.Publisher(self.name+"/mavros/setpoint_position/local", PoseStamped, queue_size=10)
+        self.setpoint_velocity_pub = rospy.Publisher(self.name+"/mavros/setpoint_velocity/cmd_vel",TwistStamped, queue_size = 10)
 
         # Set client
         print("[State] : Wait for Arming service")
-        rospy.wait_for_service("/mavros/cmd/arming")  # wait service
-        self.arming_client = rospy.ServiceProxy("/mavros/cmd/arming", CommandBool)
+        rospy.wait_for_service(self.name+"/mavros/cmd/arming")  # wait service
+        self.arming_client = rospy.ServiceProxy(self.name+"/mavros/cmd/arming", CommandBool)
 
         print("[State] : Wait for Set_mode service")
-        rospy.wait_for_service("/mavros/set_mode")  # wait service
-        self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
+        rospy.wait_for_service(self.name+"/mavros/set_mode")  # wait service
+        self.set_mode_client = rospy.ServiceProxy(self.name+"/mavros/set_mode", SetMode)
 
         # Setpoint publishing MUST be faster than 2Hz
         self.rate = rospy.Rate(CONMAND_FPS)
@@ -98,6 +110,19 @@ class Drone_Enviroment():
     def pos_cb(self, data):
         self.current_pos = data
 
+    def gps_cb(self, data):
+        raw_gps = data
+
+        diff_lat = raw_gps.latitude-ORI_LAT
+        diff_lon = raw_gps.longitude-ORI_LON
+        diff_alt = raw_gps.altitude-ORI_ALT
+
+        global_X = math.pi*(EARTH_R*math.cos(ORI_LAT*(math.pi/180)))*(diff_lon/180)
+        global_Y = math.pi*EARTH_R*(diff_lat/180)
+        global_Z = diff_alt
+
+        self.current_global_pos = np.array([global_X, global_Y, global_Z])
+
     def img_cb(self, data):
         image = ros_numpy.numpify(data).copy()
         self.current_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -108,7 +133,7 @@ class Drone_Enviroment():
             if(self.set_mode_client.call(self.offb_set_mode).mode_sent == True):
                 rospy.loginfo("OFFBOARD enabled")
 
-            self.last_req = rospy.Time.now()
+            self.setRosTime()
 
         # Confirm current_state.armed == True，give 5 sec to wait
         else:
@@ -116,20 +141,21 @@ class Drone_Enviroment():
                 if(self.arming_client.call(self.arm_cmd).success == True):
                     rospy.loginfo("Vehicle armed")
 
-                self.last_req = rospy.Time.now()
+                self.setRosTime()
 
         # Publish action
         self.local_pos_pub.publish(self._np2PoseStamped(action))
 
         # Get observation
-        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        self.observation.global_pose = self.current_global_pos
         self.observation.img = self.current_img
 
         # Calculate reward (for reinforcement learning)
         reward = 0
 
         # Done or not
-        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
+        linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
         if linear_distant >= 10:
             self.done = True
         
@@ -145,7 +171,7 @@ class Drone_Enviroment():
             if(self.set_mode_client.call(self.offb_set_mode).mode_sent == True):
                 rospy.loginfo("OFFBOARD enabled")
 
-            self.last_req = rospy.Time.now()
+            self.setRosTime()
 
         # Confirm current_state.armed == True，give 5 sec to wait
         else:
@@ -153,7 +179,7 @@ class Drone_Enviroment():
                 if(self.arming_client.call(self.arm_cmd).success == True):
                     rospy.loginfo("Vehicle armed")
 
-                self.last_req = rospy.Time.now()
+                self.setRosTime()
         
         # Publish action
         set_velocity = TwistStamped()
@@ -165,14 +191,15 @@ class Drone_Enviroment():
         self.setpoint_velocity_pub.publish(set_velocity)
 
         # Get observation
-        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        self.observation.global_pose = self.current_global_pos
         self.observation.img = self.current_img
 
         # Calculate reward (for reinforcement learning)
         reward = 0
 
         # Done or not
-        linear_distant = np.sum(np.square(self.observation.pose[0]))**0.5
+        linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
         if linear_distant >= 10:
             self.done = True
         
@@ -198,7 +225,7 @@ class Drone_Enviroment():
         # Wait the Drone to the initial point
         print("[State] : Reset & Wait the Drone to the initial point")
         init_time = time.time()
-        self.last_req = rospy.Time.now()
+        self.setRosTime()
         while(not rospy.is_shutdown()):
             C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.2
             C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.2
@@ -218,7 +245,7 @@ class Drone_Enviroment():
         self.done = False
         print("[State] : Reset Done")
 
-        self.observation.pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
         self.observation.img = self.current_img
 
         return self.observation
@@ -277,13 +304,22 @@ class Drone_Enviroment():
         yaw = math.atan2(2*(q_w*q_z + q_x*q_y), 1-2*(q_y**2 + q_z**2))
 
         return np.array([[pos_X,pos_Y,pos_Z],[0, 0, yaw]])
+    
+    def setRosTime(self):
+        self.last_req = rospy.Time.now()
+    
+    def checkRosShutdown(self):
+        if rospy.is_shutdown():
+            return True
+        else:
+            return False
 
     def _myhook(self):
         print("[State] : ROS shutdown, Drone Back to home !")
 
 
 def test_main():
-    env = Drone_Enviroment()
+    env = Multi_Drone_Enviroment("/uav1")
     observation = env.reset()
     action = np.array([[0,2,0],[0,0,0]])
     while True:
