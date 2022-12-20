@@ -1,5 +1,4 @@
 <?xml version="1.0"?>
-<!-- Camera REF:https://zhuanlan.zhihu.com/p/91692124 -->
 <launch>
     <!-- MAVROS posix SITL environment launch script -->
     <!-- launches MAVROS, PX4 SITL, Gazebo environment, and spawns vehicle -->
@@ -14,11 +13,7 @@
     <arg name="est" default="ekf2"/>
     <arg name="vehicle" default="iris"/>
     <arg name="world" default="$(find mavlink_sitl_gazebo)/worlds/empty.world"/>
-    
-    <!--Change -->
-    <arg name="my_model" default="iris_fpv_cam"/>
-    <arg name="sdf" default="$(find mavlink_sitl_gazebo)/models/$(arg my_model)/$(arg my_model).sdf"/>
-    
+    <arg name="sdf" default="$(find mavlink_sitl_gazebo)/models/$(arg vehicle)/$(arg vehicle).sdf"/>
     <arg name="rcS" default="$(find px4)/posix-configs/SITL/init/$(arg est)/$(arg vehicle)"/>
     <!-- gazebo configs -->
     <arg name="gui" default="true"/>
@@ -32,7 +27,7 @@
     <!-- PX4 configs -->
     <arg name="interactive" default="true"/>
     <!-- PX4 SITL and Gazebo -->
-    <include file="$(find YCH_drone)/launch/posix_sitl.launch">
+    <include file="$(find px4)/launch/posix_sitl.launch">
         <arg name="x" value="$(arg x)"/>
         <arg name="y" value="$(arg y)"/>
         <arg name="z" value="$(arg z)"/>
