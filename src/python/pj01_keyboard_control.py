@@ -112,7 +112,7 @@ def main():
     global Done
     global action, press_time, drone_lock, already_locked, back_to_home
 
-    env = ENV()
+    env = ENV("/uav1")
     observation = env.reset()
 
     KB_T = TK_KeyBoardThread()
@@ -132,7 +132,7 @@ def main():
                 already_locked = True
 
             print("Drone is locked, press [n-key] to unlock !! , press [p-key] to lock again !!   ", end='\r')
-            next_observation, reward, done, info = env.position_step(old_observation.pose)
+            next_observation, reward, done, info = env.position_step(old_observation.local_pose)
             observation = next_observation
 
         # Drone is unlocked
@@ -154,11 +154,11 @@ def main():
             back_to_home = False
             drone_lock = True
             already_locked = False
-
+        '''
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
-
+        '''
         if Done:
             break
 

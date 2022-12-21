@@ -2,7 +2,7 @@ import numpy as np
 import argparse
 import time
 import math
-from env.multi_main_enviroment import Multi_Drone_Enviroment as ENV
+from env.main_enviroment import Drone_Enviroment as ENV
 
 '''
 To add a third iris to this simulation there are two main components to consider:
@@ -317,6 +317,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--drone_num", default=3, type=int, help="Total Drone Number")
+    parser.add_argument("--drone_num", default=4, type=int, help="Total Drone Number")
     args = parser.parse_args()
     main(args)

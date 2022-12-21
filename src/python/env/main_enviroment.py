@@ -52,7 +52,7 @@ class Drone_observation():
         self.img = None
 
 class Drone_Enviroment():
-    def __init__(self):
+    def __init__(self, drone_name=""):
         print("[State] : Start Drone Enviroment")
         rospy.init_node("main_enviroemnt")
 
@@ -66,27 +66,28 @@ class Drone_Enviroment():
         self.current_img = Image()
         self.done = False
         self.observation = Drone_observation()
+        self.name = drone_name
 
         # ************************* PX4 SETTING ************************* #
 
         # Set subscriber
-        state_sub = rospy.Subscriber("/mavros/state", State, callback = self.state_cb)
-        local_pos_sub = rospy.Subscriber("/mavros/local_position/pose", PoseStamped, callback = self.pos_cb)
-        gps_sub = rospy.Subscriber("/mavros/global_position/global", NavSatFix, callback = self.gps_cb)
-        local_img_sub = rospy.Subscriber("/iris/usb_cam/image_raw", Image, callback = self.img_cb)
+        state_sub = rospy.Subscriber(self.name+"/mavros/state", State, callback = self.state_cb)
+        local_pos_sub = rospy.Subscriber(self.name+"/mavros/local_position/pose", PoseStamped, callback = self.pos_cb)
+        gps_sub = rospy.Subscriber(self.name+"/mavros/global_position/global", NavSatFix, callback = self.gps_cb)
+        #local_img_sub = rospy.Subscriber("/iris/usb_cam/image_raw", Image, callback = self.img_cb)
 
         # Set publisher
-        self.local_pos_pub = rospy.Publisher("/mavros/setpoint_position/local", PoseStamped, queue_size=10)
-        self.setpoint_velocity_pub = rospy.Publisher("/mavros/setpoint_velocity/cmd_vel",TwistStamped, queue_size = 10)
+        self.local_pos_pub = rospy.Publisher(self.name+"/mavros/setpoint_position/local", PoseStamped, queue_size=10)
+        self.setpoint_velocity_pub = rospy.Publisher(self.name+"/mavros/setpoint_velocity/cmd_vel",TwistStamped, queue_size = 10)
 
         # Set client
         print("[State] : Wait for Arming service")
-        rospy.wait_for_service("/mavros/cmd/arming")  # wait service
-        self.arming_client = rospy.ServiceProxy("/mavros/cmd/arming", CommandBool)
+        rospy.wait_for_service(self.name+"/mavros/cmd/arming")  # wait service
+        self.arming_client = rospy.ServiceProxy(self.name+"/mavros/cmd/arming", CommandBool)
 
         print("[State] : Wait for Set_mode service")
-        rospy.wait_for_service("/mavros/set_mode")  # wait service
-        self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
+        rospy.wait_for_service(self.name+"/mavros/set_mode")  # wait service
+        self.set_mode_client = rospy.ServiceProxy(self.name+"/mavros/set_mode", SetMode)
 
         # Setpoint publishing MUST be faster than 2Hz
         self.rate = rospy.Rate(CONMAND_FPS)
@@ -319,7 +320,7 @@ class Drone_Enviroment():
 
 
 def test_main():
-    env = Drone_Enviroment()
+    env = Multi_Drone_Enviroment("/uav1")
     observation = env.reset()
     action = np.array([[0,2,0],[0,0,0]])
     while True:

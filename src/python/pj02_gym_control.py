@@ -1,7 +1,6 @@
 import numpy as np
 import argparse
 from env.main_enviroment import Drone_Enviroment as ENV
-#from env.multi_main_enviroment import Multi_Drone_Enviroment as ENV
 
 # ************************* Design Agent Start ************************* #
 class myAgent():
@@ -9,7 +8,7 @@ class myAgent():
         pass
 
     def select_action(self,obs):
-        x_dir = 1
+        x_dir = 2
         y_dir = 0
         z_dir = 0
         pitch = 0
@@ -21,22 +20,27 @@ class myAgent():
 
 # ************************* Design Agent Stop  ************************* #
 '''
-1. action :
+0. action :
 numpy array
 shape = (2, 3)
-np.array([x,y,z],[pitch, roll, yaw])
+np.array([[x,y,z],[pitch, roll, yaw]])
 
-2. observation.pose :
+1. observation.local_pose :
 numpy array
 shape = (2, 3)
-np.array([x,y,z],[pitch, roll, yaw])
+np.array([[x,y,z],[pitch, roll, yaw]])
+
+2. observation.global_pose :
+numpy array
+shape = (3,)
+np.array([x,y,z])
 
 3. observation.img :
 numpy array
 shape = (240, 320, 3)
 '''
 def main(args):
-    env = ENV()
+    env = ENV("/uav1")
     agent = myAgent()
     
     for ep in range(2):
