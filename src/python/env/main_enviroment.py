@@ -29,21 +29,25 @@ class Drone_observation():
     def __init__(self):
         '''
         0. action :
+        * control input 可以是位置姿態，也可以是速度角速度
         numpy array
         shape = (2, 3)
         np.array([[x,y,z],[pitch, roll, yaw]])
 
         1. observation.local_pose :
+        * 以出生點為座標原點
         numpy array
         shape = (2, 3)
         np.array([[x,y,z],[pitch, roll, yaw]])
 
         2. observation.global_pose :
+        * GPS 座標
         numpy array
         shape = (3,)
         np.array([x,y,z])
 
         3. observation.img :
+        * 影像資訊 目前並沒有使用
         numpy array
         shape = (240, 320, 3)
         '''
@@ -53,20 +57,24 @@ class Drone_observation():
 
 class Drone_Enviroment():
     def __init__(self, drone_name=""):
-        print("[State] : Start Drone Enviroment")
+        print("[State] : Start Drone{} Enviroment".format(drone_name))
         rospy.init_node("main_enviroemnt")
 
         # *********************** INITIAL PARAMETER ********************* #
         # Initial parameter setup
         self.last_req = rospy.Time.now()
+        self.observation = Drone_observation()
+
         self.current_state = State()
-        self.current_pos = PoseStamped()  # For orientation & height
-        self.altitude = 0.0
+        self.current_local_pos = PoseStamped()  # For orientation & height
         self.current_global_pos = np.array([0,0,0])  # For position
         self.current_img = Image()
+        
+        self.altitude = 0.0
+        
         self.done = False
-        self.observation = Drone_observation()
         self.name = drone_name
+        self.distant_limit = 15.0
 
         # ************************* PX4 SETTING ************************* #
 
@@ -109,7 +117,7 @@ class Drone_Enviroment():
         self.current_state = data
 
     def pos_cb(self, data):
-        self.current_pos = data
+        self.current_local_pos = data
         self.altitude = data.pose.position.z
 
     def gps_cb(self, data):
@@ -144,23 +152,23 @@ class Drone_Enviroment():
 
                 self.setRosTime()
 
-        # Publish action
+        # 1. Publish action
         self.local_pos_pub.publish(self._np2PoseStamped(action))
 
-        # Get observation
-        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        # 2. Get observation
+        self.observation.local_pose = self._PoseStamped2np(self.current_local_pos)
         self.observation.global_pose = self.current_global_pos
         self.observation.img = self.current_img
 
-        # Calculate reward (for reinforcement learning)
+        # 3. Calculate reward (for reinforcement learning)
         reward = 0
 
-        # Done or not
+        # 4. Done or not
         linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
-        if linear_distant >= 10:
+        if linear_distant >= self.distant_limit:
             self.done = True
-        
-        # Info
+
+        # 5. Info
         info = "Nothing"
 
         self.rate.sleep()
@@ -182,29 +190,29 @@ class Drone_Enviroment():
 
                 self.setRosTime()
         
-        # Publish action
+        # 1. Publish action
         set_velocity = TwistStamped()
-        yaw = self._PoseStamped2np(self.current_pos)[1][2]
+        yaw = self._PoseStamped2np(self.current_local_pos)[1][2]
         set_velocity.twist.linear.x = action[0][0]*math.cos(yaw)-action[0][1]*math.sin(yaw)
         set_velocity.twist.linear.y = action[0][0]*math.sin(yaw)+action[0][1]*math.cos(yaw)
         set_velocity.twist.linear.z = action[0][2]
         set_velocity.twist.angular.z = action[1][2]
         self.setpoint_velocity_pub.publish(set_velocity)
 
-        # Get observation
-        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        # 2. Get observation
+        self.observation.local_pose = self._PoseStamped2np(self.current_local_pos)
         self.observation.global_pose = self.current_global_pos
         self.observation.img = self.current_img
 
-        # Calculate reward (for reinforcement learning)
+        # 3. Calculate reward (for reinforcement learning)
         reward = 0
 
-        # Done or not
+        # 4. Done or not
         linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
-        if linear_distant >= 10:
+        if linear_distant >= self.distant_limit:
             self.done = True
         
-        # Info
+        # 5. Info
         info = "Nothing"
 
         self.rate.sleep()
@@ -228,9 +236,9 @@ class Drone_Enviroment():
         init_time = time.time()
         self.setRosTime()
         while(not rospy.is_shutdown()):
-            C_1 = abs(self.current_pos.pose.position.x - init_action[0][0]) < 0.2
-            C_2 = abs(self.current_pos.pose.position.y - init_action[0][1]) < 0.2
-            C_3 = abs(self.current_pos.pose.position.z - init_action[0][2]) < 0.2
+            C_1 = abs(self.current_local_pos.pose.position.x - init_action[0][0]) < 0.2
+            C_2 = abs(self.current_local_pos.pose.position.y - init_action[0][1]) < 0.2
+            C_3 = abs(self.current_local_pos.pose.position.z - init_action[0][2]) < 0.2
 
             if C_1 and C_2 and C_3:  # 1cm
                 print("[State] : Initialize Done")
@@ -246,7 +254,7 @@ class Drone_Enviroment():
         self.done = False
         print("[State] : Reset Done")
 
-        self.observation.local_pose = self._PoseStamped2np(self.current_pos)
+        self.observation.local_pose = self._PoseStamped2np(self.current_local_pos)
         self.observation.img = self.current_img
 
         return self.observation
@@ -276,15 +284,10 @@ class Drone_Enviroment():
     def _PoseStamped2np(self, pose):
         '''
         Quaternion to Eularian
-        https://www.cnblogs.com/21207-ihome/p/6894128.html
         這邊的姿態使用的是四元數（Quaternion）
-
         q = cos(theta/2)+sin(theta/2)n
         q = cos(theta/2)+sin(theta/2)i+sin(theta/2)j+sin(theta/2)k
         q = w + xi + yj + zk
-        
-        第一二象限： z:- w:- or z:+ w:+
-        第三四象限： z:+ w:- or z:- w:+
         '''
         pos_X = pose.pose.position.x
         pos_Y = pose.pose.position.y
@@ -320,12 +323,15 @@ class Drone_Enviroment():
 
 
 def test_main():
-    env = Multi_Drone_Enviroment("/uav1")
+    env = Drone_Enviroment("/uav1")
     observation = env.reset()
-    action = np.array([[0,2,0],[0,0,0]])
+    action = np.array([[2,0,0],[0,0,0.2]])
     while True:
         env.velocity_step(action)
-
+        if env.done:
+            break 
+    env.reset()
+    env.shotdown()
 
 if __name__ == "__main__":
     test_main()

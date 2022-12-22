@@ -95,7 +95,7 @@ class Virtual_Drone():
             self.error_sum_set.append(error_sum)
             self.error_past_set.append(error_past)
 
-    def cal_current_pos(self, env_set):
+    def cal_pos(self, env_set):
         drone_num = len(env_set)
         pos_X, pos_Y, pos_Z, pos_Yaw = 0,0,0,0
         for i in range(drone_num):
@@ -115,7 +115,7 @@ class Virtual_Drone():
         body_pos_set = []
         for i in range(drone_num):
             diff_pos = env_set[i].current_global_pos-tar_global_pos[0]
-            diff_yaw = env_set[i]._PoseStamped2np(env_set[i].current_pos)[1][2]-tar_global_pos[1][2]
+            diff_yaw = env_set[i]._PoseStamped2np(env_set[i].current_local_pos)[1][2]-tar_global_pos[1][2]
             diff_yaw = normalize_angle(diff_yaw)
 
             body_pos_x = math.cos(-global_yaw)*diff_pos[0] - math.sin(-global_yaw)*diff_pos[1]
@@ -258,12 +258,12 @@ def reset_drone_set(env_set, vir_drone, init_position):
     observation_set = []
     for i in range(num_env):
         env_set[i].done = False
-        env_set[i].observation.local_pose = env_set[i]._PoseStamped2np(env_set[i].current_pos)
+        env_set[i].observation.local_pose = env_set[i]._PoseStamped2np(env_set[i].current_local_pos)
         env_set[i].observation.img = env_set[i].current_img
         observation_set.append(env_set[i].observation)
     
 
-    vir_drone_pos = vir_drone.cal_current_pos(env_set)
+    vir_drone_pos = vir_drone.cal_pos(env_set)
     print("[State] : Reset Done")
     return vir_drone_pos
 
@@ -274,7 +274,7 @@ def velocity_step_set(env_set, vir_drone, action_set):
             next_observation, reward, done, info = env_set[i].velocity_step(action_set[i])
             next_observation_set.append(next_observation)
             done_set = done_set and done
-        next_vir_drone_pos = vir_drone.cal_current_pos(env_set)
+        next_vir_drone_pos = vir_drone.cal_pos(env_set)
         return next_vir_drone_pos, done_set
 
 def shotdown_set(env_set):

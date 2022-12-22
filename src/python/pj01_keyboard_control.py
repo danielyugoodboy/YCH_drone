@@ -123,7 +123,7 @@ def main():
 
     # Control Loop
     while True:
-        # Drone is locked
+        # 1-1. Drone is locked
         if drone_lock:
             if already_locked:
                 pass 
@@ -135,7 +135,7 @@ def main():
             next_observation, reward, done, info = env.position_step(old_observation.local_pose)
             observation = next_observation
 
-        # Drone is unlocked
+        # 1-2. Drone is unlocked (Start Control)
         else:
             # fly
             if (time.time()-press_time)>0.1 :
@@ -149,16 +149,20 @@ def main():
             next_observation, reward, done, info = env.velocity_step(action)
             observation = next_observation
         
+        # 2. Drone back to home
         if back_to_home:
             observation = env.reset()
-            back_to_home = False
             drone_lock = True
             already_locked = False
+            back_to_home = False
+        
+        # Show IMG
         '''
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
         '''
+
         if Done:
             break
 
