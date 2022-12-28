@@ -2,31 +2,6 @@ import numpy as np
 import argparse
 from env.main_enviroment import Drone_Enviroment as ENV
 
-'''
-0. action :
-* control input 可以是位置姿態，也可以是速度角速度
-numpy array
-shape = (2, 3)
-np.array([[x,y,z],[pitch, roll, yaw]])
-
-1. observation.local_pose :
-* 以出生點為座標原點
-numpy array
-shape = (2, 3)
-np.array([[x,y,z],[pitch, roll, yaw]])
-
-2. observation.global_pose :
-* GPS 座標
-numpy array
-shape = (3,)
-np.array([x,y,z])
-
-3. observation.img :
-* 影像資訊 目前並沒有使用
-numpy array
-shape = (240, 320, 3)
-'''
-
 # Design Agent Start
 class myAgent():
     def __init__(self):
