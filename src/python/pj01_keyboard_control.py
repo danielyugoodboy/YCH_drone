@@ -99,7 +99,7 @@ class TK_KeyBoardThread(threading.Thread):
         win.title("KeyBoard Controller")
         win.geometry("640x360")
 
-        img = Image.open('img/controler_640x360.jpg')
+        img = Image.open('img/controller_640x360.jpg')
         tk_img = ImageTk.PhotoImage(img)
         label = tkinter.Label(win, image=tk_img, width=640, height=360)
         label.pack()
@@ -112,7 +112,7 @@ def main():
     global Done
     global action, press_time, drone_lock, already_locked, back_to_home
 
-    env = ENV()
+    env = ENV("/uav1")
     observation = env.reset()
 
     KB_T = TK_KeyBoardThread()
@@ -123,7 +123,7 @@ def main():
 
     # Control Loop
     while True:
-        # Drone is locked
+        # 1-1. Drone is locked
         if drone_lock:
             if already_locked:
                 pass 
@@ -132,10 +132,10 @@ def main():
                 already_locked = True
 
             print("Drone is locked, press [n-key] to unlock !! , press [p-key] to lock again !!   ", end='\r')
-            next_observation, reward, done, info = env.position_step(old_observation.pose)
+            next_observation, reward, done, info = env.position_step(old_observation.local_pose)
             observation = next_observation
 
-        # Drone is unlocked
+        # 1-2. Drone is unlocked (Start Control)
         else:
             # fly
             if (time.time()-press_time)>0.1 :
@@ -149,15 +149,19 @@ def main():
             next_observation, reward, done, info = env.velocity_step(action)
             observation = next_observation
         
+        # 2. Drone back to home
         if back_to_home:
             observation = env.reset()
-            back_to_home = False
             drone_lock = True
             already_locked = False
-
+            back_to_home = False
+        
+        # Show IMG
+        '''
         cur_img = observation.img
         cv2.imshow("Image window", cur_img)
         cv2.waitKey(3)
+        '''
 
         if Done:
             break
