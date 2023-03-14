@@ -197,15 +197,6 @@ This is a side project about Px4 on Gazebo
     </model>
     </sdf>
     ```
-
-#### gazebo 報錯 [Err] [REST.cc:205] Error in REST request 解決
-
-* 將 url:  https://api.ignitionfuel.org 改成 url:  https://api.ignitionrobotics.org
-
-    ```
-    $ gedit .ignition/fuel/config.yaml
-    ```
-
 #### A. Single Drone
 
 * 開啟一個終端 - 開啟gazebo環境
@@ -217,14 +208,14 @@ This is a side project about Px4 on Gazebo
 
 * 另外開啟一個終端 - 啟動執行檔
 
-    A. KryBoard control
+    a. KeyBoard control
     ```
     $ cd ~/drone_ws/src/YCH_drone/src/python
     $ python pj01_keyboard_control.py
     ```
     ![](https://i.imgur.com/t0bUpsa.png)
 
-    B. Gym Envirom
+    b. Gym Envirom
     ```
     $ cd ~/drone_ws/src/YCH_drone/src/python
     $ python pj02_gym_control.py
@@ -249,14 +240,76 @@ This is a side project about Px4 on Gazebo
 
 * 另外開啟一個終端 - 啟動執行檔
 
-    B. Gym Envirom
     ```
     $ cd ~/drone_ws/src/YCH_drone/src/python
     $ python pj04_multi_gym_control.py
     ```
     ![](https://i.imgur.com/Q5fVbZj.png)
+    
+    
+#### C. VTOL
+* 開啟編譯
 
-## 2. Git 筆記
+    ```
+    $ cd ~/drone_ws/src/Firmware
+    $ make posix_sitl_default gazebo_standard_vtol
+    ```
+
+* 操控
+
+    ```
+    commander takeoff
+    commander transition
+    commander land
+    ```
+
+    ![](https://i.imgur.com/q32SAn3.png)
+
+
+## 2. 實體無人機
+### 2-1. 嵌入式系統開發版:
+
+* Raspberry Pi 3
+![](https://i.imgur.com/y9KLzOJ.jpg)
+
+* Raspberry Pi 4
+![](https://i.imgur.com/vf79geM.png)
+
+![](https://i.imgur.com/4aslia4.png)
+
+
+* UP board:
+https://24h.pchome.com.tw/prod/DSAJ2B-A900F5ZK6
+![](https://i.imgur.com/5BeHRIE.png)
+
+
+* UP 4000:
+https://up-board.org/up-4000/
+![](https://i.imgur.com/beuXcGP.png)
+
+* JETSON XAVIER NX
+![](https://i.imgur.com/qfK3Q6q.png)
+
+
+### 2-2. 實機操作
+* 所有設備
+    ![](https://i.imgur.com/njTRLiv.jpg)
+
+* 裝槳順序
+    ![](https://i.imgur.com/g8KeS3O.jpg)
+
+    ![](https://i.imgur.com/AI2nA8p.jpg)
+
+* 電池充電
+    * 充電器沒有接上插座之前，不要把電池接上充電器，不然會回充
+    * 一定要接上分壓板，不然離電池的電壓會不穩定
+    * 遙控器電池充電的電流為：0.5A~1A
+    * 無人機電池充電的電流為：3A~5A
+    ![](https://i.imgur.com/XjBekdc.jpg)
+
+
+
+## 3. Git 筆記
 
 * 1. 安裝Git
 
@@ -288,3 +341,56 @@ This is a side project about Px4 on Gazebo
     ```
 
 * 7. 下載 GitKraken https://www.gitkraken.com/
+
+
+
+## 4. Ros 筆記
+教學 ： http://wiki.ros.org/ROS/Tutorials
+建議閱讀章節:
+```
+1. Installing and Configuring Your ROS Environment
+2. Navigating the ROS Filesystem
+3. Creating a ROS Package
+4. Building a ROS Package
+5. Understanding ROS Nodes
+6. Understanding ROS Topics
+8. Using rqt_console and roslaunch
+11. Writing a Simple Publisher and Subscriber (C++)
+12. Writing a Simple Publisher and Subscriber (Python)
+13. Examining the Simple Publisher and Subscriber
+```
+![](https://i.imgur.com/vgXhZYf.png)
+
+
+1. rospack
+rospack allows you to get information about packages. In this tutorial, we are only going to cover the find option, which returns the path to package.
+```
+$ rospack find [package_name]
+```
+
+2. roscd
+roscd is part of the rosbash suite. It allows you to change directory (cd) directly to a package or a stack.
+```
+$ roscd <package-or-stack>[/subdir]
+```
+
+3. 建立package需要注意：
+Building a catkin workspace and sourcing the setup file
+
+4. Quick Overview of Graph Concepts
+* Nodes: A node is an executable that uses ROS to communicate with other nodes.
+
+* Messages: ROS data type used when subscribing or publishing to a topic.
+
+* Topics: Nodes can publish messages to a topic as well as subscribe to a topic to receive messages.
+
+* Master: Name service for ROS (i.e. helps nodes find each other)
+
+* rosout: ROS equivalent of stdout/stderr
+
+* roscore: Master + rosout + parameter server (parameter server will be introduced later)
+
+5. 建立python node的時候,記得要把檔案改成可執行,不然rosrun會找不到
+```
+chmod +x talker.py
+```
