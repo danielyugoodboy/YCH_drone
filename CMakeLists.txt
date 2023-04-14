@@ -139,6 +139,10 @@ include_directories(
 add_executable(test_drone_cpp src/cpp/test_drone_cpp.cpp)
 target_link_libraries(test_drone_cpp ${catkin_LIBRARIES})
 
+add_executable(drone_main src/cpp/drone_main.cpp)
+target_link_libraries(drone_main ${catkin_LIBRARIES})
+
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
