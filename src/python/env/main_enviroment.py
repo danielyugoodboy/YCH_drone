@@ -96,7 +96,11 @@ class Drone_Enviroment():
         print("[State] : Wait for Set_mode service")
         rospy.wait_for_service(self.name+"/mavros/set_mode")  # wait service
         self.set_mode_client = rospy.ServiceProxy(self.name+"/mavros/set_mode", SetMode)
-
+        '''
+        PX4中的offboard模式能夠接受來自外部的控制指令，搭配機載或支持MAVROS的協同計算機，
+        可在PX4飛控平臺上加入視覺處理或人工智能，以實現無人機自動控制功能
+        '''
+        
         # Setpoint publishing MUST be faster than 2Hz
         self.rate = rospy.Rate(CONMAND_FPS)
 
