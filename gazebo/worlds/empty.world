@@ -1,6 +1,22 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
   <world name="default">
+    <!-- sky color -->
+    <scene>
+      <sky>
+        <time>10</time>
+        <sunrise>6</sunrise>
+        <sunset>18</sunset>
+        <clouds>
+          <speed>12</speed>
+          <direction>1.57079</direction> 
+               
+        </clouds>
+      </sky>
+      <grid>false</grid>
+      <origin_visual>false</origin_visual>
+    </scene>
+
     <!-- A global light source -->
     <include>
       <uri>model://sun</uri>
