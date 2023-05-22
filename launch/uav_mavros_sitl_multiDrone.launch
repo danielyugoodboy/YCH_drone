@@ -32,7 +32,7 @@
         <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
             <arg name="x" value="-2"/>
             <arg name="y" value="0"/>
-            <arg name="z" value="0"/>
+            <arg name="z" value="1"/>
             <arg name="R" value="0"/>
             <arg name="P" value="0"/>
             <arg name="Y" value="0"/>
@@ -59,7 +59,7 @@
         <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
             <arg name="x" value="1"/>
             <arg name="y" value="2"/>
-            <arg name="z" value="0"/>
+            <arg name="z" value="1"/>
             <arg name="R" value="0"/>
             <arg name="P" value="0"/>
             <arg name="Y" value="0"/>
@@ -86,7 +86,7 @@
         <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
             <arg name="x" value="1"/>
             <arg name="y" value="-2"/>
-            <arg name="z" value="0"/>
+            <arg name="z" value="1"/>
             <arg name="R" value="0"/>
             <arg name="P" value="0"/>
             <arg name="Y" value="0"/>
@@ -113,7 +113,7 @@
         <include file="$(find YCH_drone)/launch/single_vehicle_spawn.launch">
             <arg name="x" value="0"/>
             <arg name="y" value="0"/>
-            <arg name="z" value="0"/>
+            <arg name="z" value="1"/>
             <arg name="R" value="0"/>
             <arg name="P" value="0"/>
             <arg name="Y" value="0"/>
