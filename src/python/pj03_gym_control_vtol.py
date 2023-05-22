@@ -8,7 +8,7 @@ class myAgent():
         pass
 
     def select_action(self,obs):
-        x_dir, y_dir, z_dir = 20, 0, 0
+        x_dir, y_dir, z_dir = 100, 100, 40
         pitch, row, yaw = 0, 0, 0
 
         action = np.array([[x_dir, y_dir, z_dir], [pitch, row, yaw]])
@@ -24,7 +24,7 @@ def main(args):
         print("Start Episode : {}".format(ep+1))
         while True:
             action = agent.select_action(observation)
-            next_observation, reward, done, info = env.velocity_step(action)
+            next_observation, reward, done, info = env.position_step_FW(action)
             observation = next_observation
             if done:
                 break

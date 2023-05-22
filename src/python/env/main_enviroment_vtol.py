@@ -76,7 +76,7 @@ class Drone_Enviroment():
         
         self.done = False
         self.name = drone_name
-        self.distant_limit = 50.0
+        self.distant_limit = 300.0
 
         # ************************* PX4 SETTING ************************* #
 
@@ -156,7 +156,7 @@ class Drone_Enviroment():
         image = ros_numpy.numpify(data).copy()
         self.current_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    def position_step(self, action):
+    def position_step_MC(self, action):
         # Confirm current_state.mode == "OFFBOARD"，give 5 sec to wait
         if(self.current_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_req) > rospy.Duration(5.0)):
             if(self.set_mode_client.call(self.offb_set_mode).mode_sent == True):
@@ -184,6 +184,56 @@ class Drone_Enviroment():
             rospy.logerr("Service call failed: %s", e)
 
         # 1. Publish action
+        self.local_pos_pub.publish(self._np2PoseStamped(action))
+
+        # 2. Get observation
+        self.observation.local_pose = self._PoseStamped2np(self.current_local_pos)
+        self.observation.global_pose = self.current_global_pos
+        self.observation.img = self.current_img
+
+        # 3. Calculate reward (for reinforcement learning)
+        reward = 0
+
+        # 4. Done or not
+        linear_distant = np.sum(np.square(self.observation.local_pose[0]))**0.5
+        if linear_distant >= self.distant_limit:
+            self.done = True
+
+        # 5. Info
+        info = "Nothing"
+
+        self.rate.sleep()
+        return self.observation, reward, self.done, info
+
+    def position_step_FW(self, action):
+        # Confirm current_state.mode == "OFFBOARD"，give 5 sec to wait
+        if(self.current_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_req) > rospy.Duration(5.0)):
+            if(self.set_mode_client.call(self.offb_set_mode).mode_sent == True):
+                rospy.loginfo("OFFBOARD enabled")
+
+            self.setRosTime()
+
+        # Confirm current_state.armed == True，give 5 sec to wait
+        else:
+            if(not self.current_state.armed and (rospy.Time.now() - self.last_req) > rospy.Duration(5.0)):
+                if(self.arming_client.call(self.arm_cmd).success == True):
+                    rospy.loginfo("Vehicle armed")
+
+                self.setRosTime()
+
+        # Transition to Manualcontrol
+        try:
+            response = self.set_vtol_client(self.vtol_FWcmd)
+            if response.success:
+                pass
+                #rospy.loginfo("VTOL transition successful(FW)")
+            else:
+                rospy.logerr("VTOL transition failed(FW)")
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed: %s", e)
+
+        # 1. Publish action
+        print(action)
         self.local_pos_pub.publish(self._np2PoseStamped(action))
 
         # 2. Get observation
@@ -235,9 +285,15 @@ class Drone_Enviroment():
         # 1. Publish action
         set_velocity = TwistStamped()
         yaw = self._PoseStamped2np(self.current_local_pos)[1][2]
+        '''
         set_velocity.twist.linear.x = action[0][0]*math.cos(yaw)-action[0][1]*math.sin(yaw)
         set_velocity.twist.linear.y = action[0][0]*math.sin(yaw)+action[0][1]*math.cos(yaw)
+        '''
+        set_velocity.twist.linear.x = action[0][0]
+        set_velocity.twist.linear.y = action[0][1]
         set_velocity.twist.linear.z = action[0][2]
+        set_velocity.twist.angular.x = action[1][0]
+        set_velocity.twist.angular.y = action[1][1]
         set_velocity.twist.angular.z = action[1][2]
         self.setpoint_velocity_pub.publish(set_velocity)
 
@@ -286,7 +342,7 @@ class Drone_Enviroment():
                 print("[State] : Initialize Done")
                 break
             else:
-                self.position_step(init_action)
+                self.position_step_MC(init_action)
         
             # calculate FPS
             current_time = time.time()
