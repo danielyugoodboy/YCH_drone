@@ -3,7 +3,7 @@
     <!-- Include the MAVROS node with SITL and Gazebo -->
     <include file="$(find YCH_drone)/launch/uav_mavros_sitl_singleCam.launch">
         <!-- Word name: Firmware/Tools/sitl_gazebo/worlds/-->
-        <arg name="world" default="$(find YCH_drone)/gazebo/worlds/itir_siziwan.world"/>
+        <arg name="world" default="$(find YCH_drone)/gazebo/worlds/empty.world"/>
     </include>
 
 </launch>
